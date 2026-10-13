@@ -9,8 +9,27 @@ Strict Mode • XAUUSD only • Max 2 signals/day
 4. 3 TPs at 1.5R / 3R / 5R
 5. Only London + New York sessions
 
-## Data
-Coinbase public API → PAXG-USD (free gold proxy)
+## Data source
+Coinbase public API → PAXG-USD (free gold proxy, no API key needed)
+
+## Automatic running (GitHub Actions)
+The engine runs automatically every 30 minutes via GitHub Actions.
+
+Workflow file: `.github/workflows/signal-engine.yml`
+
+You can also trigger it manually:
+1. Go to the repo on GitHub
+2. Click **Actions**
+3. Select **Price Action Signal Engine**
+4. Click **Run workflow**
+
+## Optional secrets (recommended)
+For better security, add these in GitHub → Settings → Secrets and variables → Actions:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHANNEL_ID`
+
+If not set, the engine uses the values already in `config.py`.
 
 ## Run locally
 ```bash
@@ -19,7 +38,6 @@ pip install -r requirements.txt
 python signal_engine.py
 ```
 
-## Next
-- GitHub Actions / cron so it runs while you are offline
-- Better Order Block + Liquidity Sweep detection
-- Website auto-update when a signal is posted
+## Notes
+- The engine itself still checks session times and daily signal limit.
+- No forced trades — only high-quality aligned setups are posted.
