@@ -1,0 +1,9 @@
+engine/
+*.py
+requirements.txt
+__pycache__/
+.env
+.git/
+README.md
+TELEGRAM_SETUP.md
+signals.json
