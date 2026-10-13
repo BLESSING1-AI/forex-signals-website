@@ -1,6 +1,5 @@
 """
-Main Signal Engine - Strict Mode XAUUSD
-Institutional multi-timeframe price action framework
+Main Signal Engine - Strict Mode XAUUSD + Event Signals
 """
 from datetime import datetime, timezone
 from data_fetcher import get_multi_timeframe_data
@@ -14,6 +13,12 @@ from config import (
     DEFAULT_RISK_PERCENT, NEWS_BLACKOUT,
     LONDON_START, LONDON_END, NY_START, NY_END
 )
+
+# Event engine
+try:
+    from event_engine import run_event_cycle
+except Exception:
+    run_event_cycle = None
 
 signals_today = 0
 last_signal_date = None
@@ -44,10 +49,10 @@ def generate_signal():
         last_signal_date = today
 
     if signals_today >= MAX_SIGNALS_PER_DAY:
-        print("Max signals reached for today")
+        print("Max technical signals reached for today")
         return None
     if NEWS_BLACKOUT:
-        print("News blackout")
+        print("News blackout flag active")
         return None
     if not is_session_active():
         print("Outside London/NY session")
@@ -136,15 +141,26 @@ def generate_signal():
 
 def run_once():
     print(f"\n=== Engine Run @ {datetime.now(timezone.utc).isoformat()} ===")
+
+    # 1) Event signals first (NFP, CPI, FOMC, etc.)
+    if run_event_cycle:
+        try:
+            event_posts = run_event_cycle()
+            print(f"Event cycle posted: {len(event_posts)} signal(s)")
+        except Exception as e:
+            print(f"Event engine error: {e}")
+
+    # 2) Pure price-action technical setups
     signal = generate_signal()
     if signal is None:
-        print("No high-quality setup this cycle")
+        print("No high-quality technical setup this cycle")
         return
-    print("Setup found:", signal)
+
+    print("Technical setup found:", signal)
     if send_signal(signal):
         global signals_today
         signals_today += 1
-        print(f"Posted. Today: {signals_today}/{MAX_SIGNALS_PER_DAY}")
+        print(f"Posted technical signal. Today: {signals_today}/{MAX_SIGNALS_PER_DAY}")
 
 if __name__ == "__main__":
     run_once()

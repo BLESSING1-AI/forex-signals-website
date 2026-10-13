@@ -1,43 +1,27 @@
-# Autonomous Price Action Engine
+# Autonomous Price Action + Event Engine
 
-Strict Mode • XAUUSD only • Max 2 signals/day
+## Two signal types
 
-## How it works
-1. D1 + H4 must agree on bias (HH/HL or LH/LL)
-2. M15/M5 must show Engulfing or Pin Bar confirmation
-3. Structure-based SL + 25pt gold buffer
-4. 3 TPs at 1.5R / 3R / 5R
-5. Only London + New York sessions
+### 1. Technical Price Action (Strict Mode)
+- D1 + H4 bias must agree
+- M15/M5 Engulfing or Pin Bar confirmation
+- Structure SL + gold buffer
+- 3 TPs (1.5R / 3R / 5R)
+- Max 2 technical signals per day
+- London + New York only
 
-## Data source
-Coinbase public API → PAXG-USD (free gold proxy, no API key needed)
+### 2. Event Signals (High Impact)
+- NFP, CPI, FOMC, PPI, Retail Sales, GDP, Unemployment, ISM/PMI, Core PCE, etc.
+- **PRE-EVENT**: directional bias from HTF structure before the number
+- **POST-EVENT**: directional reaction after the release (confirmation candle)
+- Clear `EVENT SIGNAL (PRE/POST)` format so students know it’s news-driven
+- Wider stops around news
 
-## Automatic running (GitHub Actions)
-The engine runs automatically every 30 minutes via GitHub Actions.
+## Data
+- Gold: Coinbase PAXG-USD (free)
+- Calendar: biquote.io free high-impact calendar (no key)
 
-Workflow file: `.github/workflows/signal-engine.yml`
+## Runs automatically
+GitHub Actions every 30 minutes.
 
-You can also trigger it manually:
-1. Go to the repo on GitHub
-2. Click **Actions**
-3. Select **Price Action Signal Engine**
-4. Click **Run workflow**
-
-## Optional secrets (recommended)
-For better security, add these in GitHub → Settings → Secrets and variables → Actions:
-
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHANNEL_ID`
-
-If not set, the engine uses the values already in `config.py`.
-
-## Run locally
-```bash
-cd engine
-pip install -r requirements.txt
-python signal_engine.py
-```
-
-## Notes
-- The engine itself still checks session times and daily signal limit.
-- No forced trades — only high-quality aligned setups are posted.
+Manual test: Actions → Price Action Signal Engine → Run workflow
