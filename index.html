@@ -3,19 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Price Action Signals | XAUUSD Setups</title>
-  <meta name="description" content="Free price action forex signals for beginners. Clear entry, stop loss and multiple take-profit levels. Manage risk and wait for confirmation." />
+  <title>Price Action Signals – Gold & FX</title>
+  <meta name="description" content="Institutional-grade price action signals for XAUUSD. Multi-timeframe structure, strict confirmation, 3-TP scaling. Educational only." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            gold: {
-              400: '#fbbf24',
-              500: '#f59e0b',
-              600: '#d97706',
-            }
+            gold: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
           }
         }
       }
@@ -34,8 +30,11 @@
   <nav class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center font-bold text-slate-900">PA</div>
-        <span class="font-semibold text-lg tracking-tight">Price Action Signals</span>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center font-bold text-slate-900 text-sm">PA</div>
+        <div>
+          <span class="font-semibold text-lg tracking-tight block leading-tight">Price Action Signals</span>
+          <span class="text-xs text-slate-500">Gold & FX</span>
+        </div>
       </div>
       <div class="hidden sm:flex items-center gap-6 text-sm text-slate-400">
         <a href="#signals" class="hover:text-gold-400 transition">Active Setups</a>
@@ -47,14 +46,17 @@
 
   <!-- Hero -->
   <header class="max-w-5xl mx-auto px-4 pt-12 pb-10 text-center">
-    <p class="text-gold-400 text-sm font-medium tracking-wide uppercase mb-3">Price Action Only</p>
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-4">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      Strict Mode • XAUUSD Focus • 1–2 Signals / Day Max
+    </div>
     <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">
-      Clear Setups. Multiple Targets.<br class="hidden sm:block" />
-      <span class="text-gold-400">You Manage the Risk.</span>
+      Multi-Timeframe Price Action<br class="hidden sm:block" />
+      <span class="text-gold-400">Structure. Confirmation. Precision.</span>
     </h1>
     <p class="text-slate-400 max-w-2xl mx-auto text-lg">
-      These are the same style of signals that kept most beginners profitable (~90% target hit rate when rules are followed).
-      Wait for confirmation. Respect the stop. Scale out at the TPs.
+      Higher-timeframe bias → Zone identification → Lower-timeframe confirmation.<br>
+      Clean 3-TP scaling with breakeven protection. No forced trades.
     </p>
   </header>
 
@@ -62,42 +64,48 @@
   <section id="signals" class="max-w-5xl mx-auto px-4 pb-16">
     <div class="flex items-center justify-between mb-6">
       <h2 class="text-xl font-semibold">Active Setups</h2>
-      <span class="text-xs text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">Updated manually</span>
+      <span id="last-updated" class="text-xs text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">Loading...</span>
     </div>
 
-    <div id="signals-container" class="grid gap-6 md:grid-cols-1">
-      <!-- Signal cards will be injected here by JS -->
+    <div id="signals-container" class="grid gap-6">
+      <!-- Injected by JS -->
     </div>
-
-    <p class="mt-8 text-center text-slate-500 text-sm">
-      No active setups right now? Check back later or keep an eye on the levels mentioned in previous posts.
-    </p>
   </section>
 
   <!-- How to Trade -->
   <section id="howto" class="bg-slate-900/50 border-y border-slate-800">
     <div class="max-w-5xl mx-auto px-4 py-14">
-      <h2 class="text-2xl font-semibold mb-8 text-center">How to Use These Setups</h2>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <h2 class="text-2xl font-semibold mb-8 text-center">How These Signals Are Generated</h2>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">1</div>
-          <h3 class="font-medium mb-2">Wait for Confirmation</h3>
-          <p class="text-slate-400 text-sm">Do not enter blindly. Look for price action confirmation at the entry zone (rejection, engulfing, break of structure, etc.).</p>
+          <div class="text-gold-400 font-bold text-lg mb-2">1. HTF Bias</div>
+          <h3 class="font-medium mb-2">D1 / H4 Structure</h3>
+          <p class="text-slate-400 text-sm">Only trade in the direction of clear Higher Highs / Higher Lows (bullish) or Lower Highs / Lower Lows (bearish). Conflicting HTF = no trade.</p>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">2</div>
-          <h3 class="font-medium mb-2">Respect the Stop Loss</h3>
-          <p class="text-slate-400 text-sm">Place your stop exactly where indicated (or slightly beyond structure). Never move it further away.</p>
+          <div class="text-gold-400 font-bold text-lg mb-2">2. Zone</div>
+          <h3 class="font-medium mb-2">Area of Interest</h3>
+          <p class="text-slate-400 text-sm">Price must reach an unmitigated Order Block, S/R Flip, or Liquidity Sweep zone before any entry is considered.</p>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">3</div>
-          <h3 class="font-medium mb-2">Scale Out at TPs</h3>
-          <p class="text-slate-400 text-sm">Take partial profits at TP1, TP2, etc. Move stop to break-even after TP1 or TP2 hits. Let the rest run.</p>
+          <div class="text-gold-400 font-bold text-lg mb-2">3. Confirmation</div>
+          <h3 class="font-medium mb-2">M15 / M5 Trigger</h3>
+          <p class="text-slate-400 text-sm">Wait for Break of Structure or strong Rejection (Pin Bar / Engulfing) on the close of the candle. Never enter mid-bar.</p>
+        </div>
+      </div>
+
+      <div class="mt-10 grid sm:grid-cols-3 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="font-medium mb-2 text-emerald-400">TP1</h3>
+          <p class="text-slate-400 text-sm">1:1.5 RR or key M15 level. Close 30–50%. Move Stop Loss to Breakeven.</p>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">4</div>
-          <h3 class="font-medium mb-2">Manage Risk First</h3>
-          <p class="text-slate-400 text-sm">Risk only 0.5–2% of your account per trade. Position size = Risk amount ÷ distance to stop.</p>
+          <h3 class="font-medium mb-2 text-emerald-400">TP2</h3>
+          <p class="text-slate-400 text-sm">1:3 RR or H1 swing. Close another ~30%.</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="font-medium mb-2 text-emerald-400">TP3</h3>
+          <p class="text-slate-400 text-sm">1:5+ RR or major H4 level. Close remaining or trail structure.</p>
         </div>
       </div>
     </div>
@@ -108,26 +116,11 @@
     <h2 class="text-2xl font-semibold mb-6 text-center">Non-Negotiable Risk Rules</h2>
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto">
       <ul class="space-y-4 text-slate-300">
-        <li class="flex gap-3">
-          <span class="text-gold-400 mt-0.5">✓</span>
-          <span>Never risk more than <strong>2%</strong> of your account on a single trade (1% is safer for beginners).</span>
-        </li>
-        <li class="flex gap-3">
-          <span class="text-gold-400 mt-0.5">✓</span>
-          <span>Always calculate position size before entering. Do not guess lot size.</span>
-        </li>
-        <li class="flex gap-3">
-          <span class="text-gold-400 mt-0.5">✓</span>
-          <span>If the setup is invalidated (price closes beyond the stop zone with strength), stay out.</span>
-        </li>
-        <li class="flex gap-3">
-          <span class="text-gold-400 mt-0.5">✓</span>
-          <span>Do not revenge trade. One good setup is better than five forced ones.</span>
-        </li>
-        <li class="flex gap-3">
-          <span class="text-gold-400 mt-0.5">✓</span>
-          <span>These are educational trade ideas based on price action — not financial advice.</span>
-        </li>
+        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>Risk maximum <strong>1%</strong> of account per trade (strict mode).</span></li>
+        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>Always calculate position size from the Stop Loss distance.</span></li>
+        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>Move Stop Loss to Breakeven after TP1 is hit.</span></li>
+        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>No revenge trading. One high-quality setup beats five forced ones.</span></li>
+        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>These are educational ideas only — not financial advice.</span></li>
       </ul>
     </div>
   </section>
@@ -137,104 +130,126 @@
     <div class="max-w-5xl mx-auto px-4 py-10 text-center">
       <p class="text-slate-500 text-sm max-w-3xl mx-auto leading-relaxed">
         <strong class="text-slate-400">Risk Disclaimer:</strong> Trading forex and CFDs involves substantial risk of loss and is not suitable for every investor.
-        Past performance is not indicative of future results. The setups on this site are for educational purposes only and do not constitute investment advice.
-        Always do your own analysis and never trade with money you cannot afford to lose. You are solely responsible for your trading decisions.
+        Past performance is not indicative of future results. Setups on this site are for educational purposes only and do not constitute investment advice.
+        Always do your own analysis. Never trade with money you cannot afford to lose.
       </p>
     </div>
   </section>
 
   <footer class="border-t border-slate-800 py-6 text-center text-slate-600 text-sm">
-    <p>Price Action Signals • Built for consistency</p>
+    <p>Price Action Signals – Gold & FX • Strict Mode • Educational Only</p>
   </footer>
 
   <script>
-    // ============================================
-    // EDIT THIS ARRAY TO ADD / UPDATE / REMOVE SIGNALS
-    // ============================================
+    // =============================================
+    // SIGNAL DATA – This will later be updated by the autonomous engine
+    // Format matches the institutional framework (3-TP system)
+    // =============================================
     const signals = [
-      {
-        pair: "XAUUSD",
-        direction: "Sell",
-        entry: "4200–4205",
-        stopLoss: "4112",
-        targets: ["4197", "4194", "4191", "4188", "4185", "4182", "4179", "4176"],
-        note: "Wait for confirmation and manage your risk accordingly.",
-        status: "active", // active | closed | cancelled
-        postedAt: "2026-10-13"
-      }
-      // Add more signals below like this:
-      // ,{
+      // Example structure (currently empty – engine will populate)
+      // {
+      //   id: "xau-20261013-001",
       //   pair: "XAUUSD",
-      //   direction: "Buy",
-      //   entry: "....",
-      //   stopLoss: "....",
-      //   targets: ["...", "..."],
-      //   note: "Wait for bullish confirmation at the zone.",
-      //   status: "active",
-      //   postedAt: "2026-10-14"
+      //   direction: "BUY",
+      //   entryZone: "2642.50 - 2644.00",
+      //   stopLoss: "2634.50",
+      //   tp1: "2650.00",
+      //   tp2: "2658.00",
+      //   tp3: "2670.00",
+      //   context: "D1 / H4 Bullish Alignment • M15 Liquidity Sweep & Bullish Engulfing at Support",
+      //   risk: "1%",
+      //   status: "active", // active | tp1_hit | tp2_hit | closed_win | closed_loss | cancelled
+      //   postedAt: "2026-10-13T14:30:00Z",
+      //   session: "London/NY Overlap"
       // }
     ];
 
     function renderSignals() {
       const container = document.getElementById('signals-container');
-      const active = signals.filter(s => s.status === 'active');
+      const active = signals.filter(s => s.status === 'active' || s.status === 'tp1_hit' || s.status === 'tp2_hit');
+
+      document.getElementById('last-updated').textContent = active.length
+        ? `Active: ${active.length}`
+        : 'No active setups';
 
       if (active.length === 0) {
         container.innerHTML = `
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
-            <p class="text-slate-400">No active setups at the moment.</p>
-            <p class="text-slate-500 text-sm mt-2">New price-action setups will appear here when available.</p>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
+              <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <p class="text-slate-300 font-medium">No active high-quality setups</p>
+            <p class="text-slate-500 text-sm mt-2 max-w-md mx-auto">Strict mode is active. Signals only appear when HTF bias, zone, and M15/M5 confirmation are all aligned. Check Telegram for the latest alerts.</p>
           </div>`;
         return;
       }
 
       container.innerHTML = active.map(signal => {
-        const isSell = signal.direction.toLowerCase() === 'sell';
-        const dirColor = isSell ? 'text-red-400' : 'text-emerald-400';
-        const dirBg = isSell ? 'bg-red-500/10 border-red-500/30' : 'bg-emerald-500/10 border-emerald-500/30';
-        const badge = isSell ? 'Sell ✅' : 'Buy ✅';
-
-        const tps = signal.targets.map((tp, i) =>
-          `<div class="flex justify-between text-sm py-1.5 border-b border-slate-800/80 last:border-0">
-            <span class="text-slate-500">TP${i + 1}</span>
-            <span class="font-medium text-slate-200">${tp}</span>
-          </div>`
-        ).join('');
+        const isBuy = signal.direction.toUpperCase() === 'BUY';
+        const dirColor = isBuy ? 'text-emerald-400' : 'text-red-400';
+        const dirBg = isBuy ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30';
+        const badge = isBuy ? 'BUY ✅' : 'SELL ✅';
 
         return `
           <article class="signal-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl shadow-black/20">
             <div class="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-3">
                 <span class="font-semibold text-lg tracking-wide">${signal.pair}</span>
-                <span class="text-xs uppercase tracking-wider text-slate-500">SETUP</span>
+                <span class="text-xs uppercase tracking-wider text-slate-500">PRICE ACTION</span>
               </div>
               <span class="px-3 py-1 rounded-full text-sm font-medium border ${dirBg} ${dirColor}">${badge}</span>
             </div>
 
             <div class="p-6 grid sm:grid-cols-2 gap-6">
-              <div class="space-y-4">
+              <div class="space-y-5">
                 <div>
                   <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Entry Zone</p>
-                  <p class="text-xl font-semibold text-gold-400">${signal.entry}</p>
+                  <p class="text-xl font-semibold text-gold-400">${signal.entryZone}</p>
                 </div>
                 <div>
                   <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Stop Loss</p>
                   <p class="text-lg font-medium text-red-400/90">${signal.stopLoss}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">Structure-based + volatility buffer</p>
                 </div>
-                ${signal.note ? `<p class="text-sm text-slate-400 pt-2 border-t border-slate-800">${signal.note}</p>` : ''}
+                ${signal.context ? `
+                <div class="pt-3 border-t border-slate-800">
+                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Setup Context</p>
+                  <p class="text-sm text-slate-300 leading-relaxed">${signal.context}</p>
+                </div>` : ''}
               </div>
 
               <div>
-                <p class="text-xs text-slate-500 uppercase tracking-wide mb-3">Targets</p>
-                <div class="bg-slate-950/50 rounded-xl px-4 py-2 border border-slate-800/80">
-                  ${tps}
+                <p class="text-xs text-slate-500 uppercase tracking-wide mb-3">Take Profit Targets</p>
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center bg-slate-950/60 rounded-lg px-4 py-3 border border-slate-800">
+                    <div>
+                      <span class="text-sm font-medium text-slate-200">TP1</span>
+                      <span class="text-xs text-slate-500 ml-2">Partial + BE</span>
+                    </div>
+                    <span class="font-semibold text-emerald-400">${signal.tp1}</span>
+                  </div>
+                  <div class="flex justify-between items-center bg-slate-950/60 rounded-lg px-4 py-3 border border-slate-800">
+                    <div>
+                      <span class="text-sm font-medium text-slate-200">TP2</span>
+                      <span class="text-xs text-slate-500 ml-2">~30%</span>
+                    </div>
+                    <span class="font-semibold text-emerald-400">${signal.tp2}</span>
+                  </div>
+                  <div class="flex justify-between items-center bg-slate-950/60 rounded-lg px-4 py-3 border border-slate-800">
+                    <div>
+                      <span class="text-sm font-medium text-slate-200">TP3</span>
+                      <span class="text-xs text-slate-500 ml-2">Runner</span>
+                    </div>
+                    <span class="font-semibold text-emerald-400">${signal.tp3}</span>
+                  </div>
                 </div>
+                <p class="text-xs text-slate-500 mt-3">Recommended Risk: <span class="text-slate-300">${signal.risk || '1%'}</span></p>
               </div>
             </div>
 
-            <div class="px-6 py-3 bg-slate-950/40 border-t border-slate-800 text-xs text-slate-600 flex justify-between">
-              <span>Price Action Setup</span>
-              <span>Posted: ${signal.postedAt}</span>
+            <div class="px-6 py-3 bg-slate-950/40 border-t border-slate-800 text-xs text-slate-600 flex flex-wrap justify-between gap-2">
+              <span>Strict Mode • Structure Confirmed</span>
+              <span>${signal.postedAt ? new Date(signal.postedAt).toLocaleString() : ''}</span>
             </div>
           </article>
         `;

@@ -1,35 +1,47 @@
-# Price Action Signals Website
+# Price Action Signals – Gold & FX
 
-A clean, mobile-friendly website for sharing your price-action forex setups (especially XAUUSD) with beginners.
+Institutional-grade multi-timeframe price action signal platform.
 
-## How to update signals
+## Current Status
 
-1. Open `index.html`
-2. Find the `const signals = [ ... ]` array near the bottom
-3. Edit / add / remove objects
-4. Commit and push — the site updates automatically if connected to Vercel
+- ✅ Website upgraded to 3-TP institutional format
+- ✅ Strict mode (1–2 high-quality signals/day max)
+- ✅ XAUUSD focus (Phase 1)
+- ⏳ Telegram bot connection (waiting for your Token + Channel ID)
+- ⏳ Autonomous signal engine (in progress)
 
-### Signal object format
+## Signal Format (Telegram & Website)
 
-```js
-{
-  pair: "XAUUSD",
-  direction: "Sell",          // or "Buy"
-  entry: "4200–4205",
-  stopLoss: "4112",
-  targets: ["4197", "4194", "4191", "4188", "4185", "4182", "4179", "4176"],
-  note: "Wait for confirmation and manage your risk accordingly.",
-  status: "active",           // active | closed | cancelled
-  postedAt: "2026-10-13"
-}
+```
+🚨 PRICE ACTION SIGNAL: BUY XAUUSD 🚨
+
+📍 Entry Zone: 2642.50 - 2644.00
+🛑 Stop Loss: 2634.50 (Structure SL)
+
+🎯 Take Profit 1: 2650.00 (Partial close + Move SL to BE)
+🎯 Take Profit 2: 2658.00
+🎯 Take Profit 3: 2670.00
+
+📊 Setup Context:
+• D1 / H4 Bullish Alignment
+• M15 Liquidity Sweep & Bullish Engulfing Rejection at Support Zone
+• Recommended Risk: 1% per trade
 ```
 
-## Deploy
+## Framework Summary
 
-- Push this repo to GitHub
-- Import the repo on [Vercel](https://vercel.com) (free)
-- Every push to `main` will redeploy the site
+1. **HTF Bias (D1/H4)** – Clear structure only
+2. **Zone** – Order Block / S/R Flip / Liquidity Sweep
+3. **Confirmation (M15/M5)** – BOS or strong Rejection candle close
+4. **3-TP System** with Breakeven after TP1
+5. **Strict Mode** – No forced trades
 
-## Local preview
+## Next Actions for You
 
-Just open `index.html` in a browser. No build step required.
+1. Create the Telegram channel and bot (see `TELEGRAM_SETUP.md`)
+2. Send me the Bot Token + Channel ID
+3. I will connect the posting engine and continue building the autonomous detection system
+
+## Local Preview
+
+Just open `index.html` in any browser.
