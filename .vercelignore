@@ -1,4 +1,5 @@
 engine
+engine/**
 *.py
 requirements.txt
 __pycache__
@@ -6,3 +7,4 @@ __pycache__
 .git
 README.md
 TELEGRAM_SETUP.md
+signals.json
