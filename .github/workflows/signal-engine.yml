@@ -2,18 +2,15 @@ name: Price Action Signal Engine
 
 on:
   schedule:
-    # Run every 30 minutes
-    # GitHub Actions uses UTC
-    - cron: "*/30 * * * *"
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+    # More frequent during active market hours (UTC)
+    # GitHub can delay cron; multiple entries improve reliability
+    - cron: "0,30 6-21 * * 1-5"   # every 30 min, 06:00-21:30 UTC weekdays
+    - cron: "15,45 11-14 * * 1-5" # extra around typical US data window
+  workflow_dispatch:
 
 jobs:
   run-engine:
     runs-on: ubuntu-latest
-    # Only run during approximate London + New York hours (UTC)
-    # London 07:00-16:00, New York 12:00-21:00 → combined roughly 07:00-21:00 UTC
-    # We still let the Python code do the exact session check
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,9 +33,8 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-        run: |
-          python signal_engine.py
+        run: python signal_engine.py
 
       - name: Summary
         if: always()
-        run: echo "Signal engine cycle finished at $(date -u)"
+        run: echo "Cycle finished at $(date -u)"
