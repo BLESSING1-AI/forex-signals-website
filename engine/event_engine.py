@@ -1,10 +1,6 @@
 """
-Event Signal Engine
-SAST times • Buy Gold / Sell Gold language
-Train 1: ~30 min before + final few minutes before
-Train 2: after event confirmation (ride the move)
+Event trains — short msgs, SAST, Train1 + Train2, auto next-event
 """
-
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List
 
@@ -15,90 +11,30 @@ from telegram_poster import send_message
 from config import XAU_SL_BUFFER, DEFAULT_RISK_PERCENT
 
 SAST = timezone(timedelta(hours=2))
-_sent_event_keys = set()
+_sent = set()
 
 def _sast(dt: datetime) -> str:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(SAST).strftime("%Y-%m-%d %H:%M SAST")
+    return dt.astimezone(SAST).strftime("%H:%M SAST")
 
-def _event_key(event: Dict, kind: str) -> str:
-    t = event["time"].strftime("%Y%m%d%H%M")
-    return f"{kind}:{event['name'][:40]}:{t}"
+def _sast_full(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(SAST).strftime("%a %d %b %H:%M SAST")
 
-def _gold_direction(bias: str) -> str:
+def _key(event: Dict, kind: str) -> str:
+    return f"{kind}:{event['name'][:30]}:{event['time'].strftime('%Y%m%d%H%M')}"
+
+def _gold(bias: str) -> str:
     return "BUY GOLD" if bias == "bullish" else "SELL GOLD"
-
-def _format_event_signal(signal: Dict) -> str:
-    dir_label = signal["direction_label"]  # BUY GOLD / SELL GOLD
-    phase = signal["phase"]
-    train = signal.get("train", "")
-
-    header = f"🚨 {dir_label} — EVENT {phase} {train} 🚨".strip()
-
-    text = f"""{header}
-
-📰 Event: {signal['event_name']}
-⏰ Release: {signal['event_time_sast']}
-
-📍 Entry Zone: {signal['entry_zone']}
-🛑 Stop Loss: {signal['stop_loss']}
-
-🎯 TP1: {signal['tp1']} (partial + move SL to BE)
-🎯 TP2: {signal['tp2']}
-🎯 TP3: {signal['tp3']}
-
-📊 Context:
-{signal.get('context', '')}
-• Risk: {signal.get('risk', '1%')} max
-• Pair focus: XAUUSD (Gold)
-
-⚠️ Educational only. News spikes fast — size down."""
-    return text.strip()
-
-def _calc_targets(entry: float, stop: float, direction: str) -> Dict:
-    risk = abs(entry - stop)
-    if direction == "bullish":
-        return {
-            "tp1": round(entry + risk * 1.5, 2),
-            "tp2": round(entry + risk * 3.0, 2),
-            "tp3": round(entry + risk * 5.0, 2),
-        }
-    return {
-        "tp1": round(entry - risk * 1.5, 2),
-        "tp2": round(entry - risk * 3.0, 2),
-        "tp3": round(entry - risk * 5.0, 2),
-    }
-
-def _build_levels(bias: str, price: float, structure: float) -> Dict:
-    if bias == "bullish":
-        entry_low = round(price - 1.5, 2)
-        entry_high = round(price + 0.8, 2)
-        stop = round(min(structure, price) - XAU_SL_BUFFER - 8, 2)
-        direction = "bullish"
-    else:
-        entry_low = round(price - 0.8, 2)
-        entry_high = round(price + 1.5, 2)
-        stop = round(max(structure, price) + XAU_SL_BUFFER + 8, 2)
-        direction = "bearish"
-    entry_mid = (entry_low + entry_high) / 2
-    targets = _calc_targets(entry_mid, stop, direction)
-    return {
-        "entry_zone": f"{entry_low} - {entry_high}",
-        "stop_loss": str(stop),
-        "tp1": str(targets["tp1"]),
-        "tp2": str(targets["tp2"]),
-        "tp3": str(targets["tp3"]),
-        "direction": direction,
-    }
 
 def _htf_bias() -> Optional[str]:
     data = get_multi_timeframe_data()
     d1, h4 = data.get("1d"), data.get("4h")
     if d1 is None or d1.empty or h4 is None or h4.empty:
         return None
-    b1 = determine_bias(d1)
-    b4 = determine_bias(h4)
+    b1, b4 = determine_bias(d1), determine_bias(h4)
     if b1 != "neutral" and b1 == b4:
         return b1
     if b4 != "neutral":
@@ -107,213 +43,199 @@ def _htf_bias() -> Optional[str]:
         return b1
     return None
 
-def generate_pre_event_signal(event: Dict, train: str) -> Optional[Dict]:
-    kind = f"PRE{train}"
-    key = _event_key(event, kind)
-    if key in _sent_event_keys:
-        return None
+def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Dict:
+    buf = XAU_SL_BUFFER + (10 if wide else 0)
+    if bias == "bullish":
+        el, eh = round(price - 1.5, 2), round(price + 0.8, 2)
+        stop = round(min(structure, price) - buf, 2)
+    else:
+        el, eh = round(price - 0.8, 2), round(price + 1.5, 2)
+        stop = round(max(structure, price) + buf, 2)
+    mid = (el + eh) / 2
+    risk = abs(mid - stop)
+    if bias == "bullish":
+        t1, t2, t3 = round(mid + risk * 1.5, 2), round(mid + risk * 3, 2), round(mid + risk * 5, 2)
+    else:
+        t1, t2, t3 = round(mid - risk * 1.5, 2), round(mid - risk * 3, 2), round(mid - risk * 5, 2)
+    return {"zone": f"{el}-{eh}", "sl": str(stop), "tp1": str(t1), "tp2": str(t2), "tp3": str(t3)}
 
+def _short_pre(event, bias, levels, mins, tag) -> str:
+    return (
+        f"🥇 TRAIN 1 {tag}\n"
+        f"{_gold(bias)} · {event['name'][:40]}\n"
+        f"Release {_sast(event['time'])} (~{int(abs(mins))}m)\n"
+        f"In: {levels['zone']}\n"
+        f"SL: {levels['sl']}\n"
+        f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
+        f"Risk 1% · Wait Train 2 if messy"
+    )
+
+def _short_post(event, bias, levels, conf) -> str:
+    return (
+        f"🥈 TRAIN 2 — RIDE IT\n"
+        f"{_gold(bias)} · {event['name'][:40]}\n"
+        f"Confirm: {conf}\n"
+        f"In: {levels['zone']}\n"
+        f"SL: {levels['sl']}\n"
+        f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
+        f"BE after TP1 · Risk 1%"
+    )
+
+def _announce_next_events() -> None:
+    """Always surface the next high-impact cluster (e.g. PPI day)."""
+    upcoming = fetch_upcoming_events(hours_ahead=48)
+    now = datetime.now(timezone.utc)
+    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=15)]
+    if not future:
+        return
+
+    # Group by same hour (data cluster)
+    first = future[0]
+    cluster_time = first["time"].replace(minute=0, second=0, microsecond=0)
+    cluster = [e for e in future if abs((e["time"] - first["time"]).total_seconds()) < 3600]
+
+    day_key = first["time"].strftime("%Y%m%d%H")
+    k = f"NEXT:{day_key}"
+    if k in _sent:
+        return
+
+    names = []
+    seen = set()
+    for e in cluster[:6]:
+        n = e["name"]
+        if n not in seen:
+            seen.add(n)
+            names.append(n)
+
+    lean = _htf_bias()
+    lean_txt = _gold(lean) if lean else "TBD closer to release"
+
+    msg = (
+        f"📅 NEXT EVENT\n"
+        f"{_sast_full(first['time'])}\n"
+        + "\n".join(f"• {n}" for n in names) +
+        f"\nLean: {lean_txt}\n"
+        f"Train 1 ~30m before · Train 2 after confirm"
+    )
+    if send_message(msg):
+        _sent.add(k)
+        print("Next-event announced")
+
+def generate_pre(event: Dict, tag: str) -> bool:
+    k = _key(event, f"PRE{tag}")
+    if k in _sent:
+        return False
     bias = _htf_bias()
     if not bias:
-        return None
-
+        return False
     data = get_multi_timeframe_data()
     m15 = data.get("15m")
     if m15 is None or m15.empty:
-        return None
-
+        return False
     price = float(m15["close"].iloc[-1])
     structure = find_nearby_structure_level(m15, bias)
     if structure is None:
         structure = float(m15["low"].tail(20).min()) if bias == "bullish" else float(m15["high"].tail(20).max())
-
-    levels = _build_levels(bias, price, structure)
+    levels = _levels(bias, price, structure, wide=True)
     mins = event.get("minutes_to_event", 0)
+    text = _short_pre(event, bias, levels, mins, tag)
+    if send_message(text):
+        _sent.add(k)
+        return True
+    return False
 
-    if train == "30M":
-        train_label = "(30 MIN BEFORE)"
-        note = "Primary PRE plan — levels to work with into the release."
-    else:
-        train_label = "(FINAL — FEW MIN BEFORE)"
-        note = "Final PRE alert. Prefer waiting for POST confirmation if price is messy."
-
-    context = (
-        f"• {note}\n"
-        f"• HTF structure bias: {bias.upper()}\n"
-        f"• ~{int(abs(mins))} minutes to release\n"
-        f"• Forecast: {event.get('forecast')} | Previous: {event.get('previous')}\n"
-        f"• After the number: wait for Train 2 (confirmation) to ride the move"
-    )
-
-    return {
-        "direction_label": _gold_direction(bias),
-        "direction": levels["direction"],
-        "entry_zone": levels["entry_zone"],
-        "stop_loss": levels["stop_loss"],
-        "tp1": levels["tp1"],
-        "tp2": levels["tp2"],
-        "tp3": levels["tp3"],
-        "event_name": event["name"],
-        "event_time_sast": _sast(event["time"]),
-        "phase": "PRE",
-        "train": train_label,
-        "context": context,
-        "risk": f"{DEFAULT_RISK_PERCENT}%",
-        "_key": key,
-    }
-
-def generate_post_event_signal(event: Dict) -> Optional[Dict]:
-    key = _event_key(event, "POST")
-    if key in _sent_event_keys:
-        return None
+def generate_post(event: Dict) -> bool:
+    k = _key(event, "POST")
+    if k in _sent:
+        return False
 
     data = get_multi_timeframe_data()
     m15, m5 = data.get("15m"), data.get("5m")
     if m15 is None or m15.empty:
-        return None
+        return False
 
     tf = m5 if m5 is not None and not m5.empty else m15
+    bias = None
+    conf = None
+
     engulf = detect_engulfing(tf)
     pin = detect_pin_bar(tf)
-
-    direction_bias = None
-    conf = None
     if engulf in ("bullish", "bearish"):
-        direction_bias, conf = engulf, f"{engulf} engulfing"
+        bias, conf = engulf, engulf
     elif pin in ("bullish", "bearish"):
-        direction_bias, conf = pin, f"{pin} pin bar"
+        bias, conf = pin, f"{pin} pin"
 
-    if not direction_bias and len(tf) >= 1:
+    # Loose impulse: last 1–3 candles net direction
+    if not bias and len(tf) >= 3:
+        c0, c1, c2 = tf.iloc[-1], tf.iloc[-2], tf.iloc[-3]
+        net = float(c0["close"] - c2["open"])
+        body = float(c0["close"] - c0["open"])
+        rng = float(c0["high"] - c0["low"]) or 1
+        if abs(net) > 3 or abs(body) / rng >= 0.45:
+            bias = "bullish" if (net > 0 or body > 0) else "bearish"
+            conf = "impulse"
+
+    # Even looser: close vs open of last closed bar only
+    if not bias and len(tf) >= 1:
         c = tf.iloc[-1]
         body = float(c["close"] - c["open"])
-        rng = float(c["high"] - c["low"])
-        if rng > 0 and abs(body) / rng >= 0.55:
-            direction_bias = "bullish" if body > 0 else "bearish"
-            conf = "strong impulse candle"
+        if abs(body) >= 1.5:
+            bias = "bullish" if body > 0 else "bearish"
+            conf = "candle"
 
-    if not direction_bias:
-        return None
+    if not bias:
+        print("Train2: no confirmation yet")
+        return False
 
     price = float(tf["close"].iloc[-1])
-    structure = find_nearby_structure_level(m15, direction_bias)
+    structure = find_nearby_structure_level(m15, bias)
     if structure is None:
-        structure = float(m15["low"].tail(15).min()) if direction_bias == "bullish" else float(m15["high"].tail(15).max())
+        structure = float(m15["low"].tail(12).min()) if bias == "bullish" else float(m15["high"].tail(12).max())
+    levels = _levels(bias, price, structure, wide=False)
+    text = _short_post(event, bias, levels, conf)
+    if send_message(text):
+        _sent.add(k)
+        return True
+    return False
 
-    levels = _build_levels(direction_bias, price, structure)
-
-    surprise = ""
-    if event.get("actual") is not None:
-        surprise = f"\n• Actual: {event.get('actual')} | Forecast: {event.get('forecast')} | Prev: {event.get('previous')}"
-
-    context = (
-        f"• TRAIN 2 — confirmation after the release\n"
-        f"• Trigger: {conf}\n"
-        f"• Ride the reaction with the market{surprise}\n"
-        f"• Move SL to BE after TP1"
-    )
-
-    return {
-        "direction_label": _gold_direction(direction_bias),
-        "direction": levels["direction"],
-        "entry_zone": levels["entry_zone"],
-        "stop_loss": levels["stop_loss"],
-        "tp1": levels["tp1"],
-        "tp2": levels["tp2"],
-        "tp3": levels["tp3"],
-        "event_name": event["name"],
-        "event_time_sast": _sast(event["time"]),
-        "phase": "POST",
-        "train": "(TRAIN 2 — RIDE THE MOVE)",
-        "context": context,
-        "risk": f"{DEFAULT_RISK_PERCENT}%",
-        "_key": key,
-    }
-
-def _post_daily_brief() -> None:
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
-    key = f"BRIEF:{today}"
-    if key in _sent_event_keys:
-        return
-
-    upcoming = fetch_upcoming_events(hours_ahead=36)
-    now = datetime.now(timezone.utc)
-    today_events = [e for e in upcoming if e["time"].date() == now.date() and e["time"] >= now - timedelta(hours=1)]
-
-    if not today_events:
-        _sent_event_keys.add(key)
-        return
-
-    lines = ["📅 TODAY'S HIGH-IMPACT EVENTS (times in SAST)\n"]
-    for e in today_events[:8]:
-        lines.append(
-            f"• {_sast(e['time'])} — {e['name']}\n"
-            f"  Forecast: {e.get('forecast')} | Prev: {e.get('previous')}"
-        )
-    lines.append("\nTrain 1: Buy/Sell Gold ~30 min before (+ final alert few min before)")
-    lines.append("Train 2: confirmation after release — ride the move")
-
-    if send_message("\n".join(lines)):
-        _sent_event_keys.add(key)
-
-def run_event_cycle() -> List[Dict]:
+def run_event_cycle() -> List[str]:
     posted = []
+
+    # Always try to announce next upcoming cluster
     try:
-        _post_daily_brief()
+        _announce_next_events()
     except Exception as e:
-        print("Brief error:", e)
+        print("next-event error", e)
 
-    window = get_events_in_window(minutes_before=45, minutes_after=60)
-    upcoming = fetch_upcoming_events(hours_ahead=24)
+    window = get_events_in_window(minutes_before=40, minutes_after=90)
 
-    # Heads-up earlier in the day
-    if upcoming:
-        next_e = upcoming[0]
-        mins = (next_e["time"] - datetime.now(timezone.utc)).total_seconds() / 60
-        if 45 < mins <= 12 * 60:
-            key = _event_key(next_e, "HEADS")
-            if key not in _sent_event_keys:
-                bias = _htf_bias() or "mixed"
-                lean = _gold_direction(bias) if bias in ("bullish", "bearish") else "NO CLEAR HTF BIAS YET"
-                msg = (
-                    f"📅 HIGH IMPACT EVENT AHEAD\n\n"
-                    f"📰 {next_e['name']}\n"
-                    f"⏰ {_sast(next_e['time'])} (~{int(mins)} min)\n"
-                    f"Forecast: {next_e.get('forecast')} | Previous: {next_e.get('previous')}\n\n"
-                    f"Current structure lean: {lean}\n\n"
-                    f"Train 1 (~30 min before): directional Buy/Sell Gold plan\n"
-                    f"Train 2 (after print): confirmation to ride the move"
-                )
-                if send_message(msg):
-                    _sent_event_keys.add(key)
+    # Deduplicate same-time cluster → one representative event name
+    seen_slot = set()
+    unique = []
+    for e in window:
+        slot = e["time"].strftime("%Y%m%d%H%M")
+        if slot in seen_slot:
+            continue
+        seen_slot.add(slot)
+        # Prefer PPI/CPI/NFP/FOMC naming if in cluster
+        unique.append(e)
 
-    for event in window:
+    for event in unique:
         mins = event.get("minutes_to_event", 0)
 
-        # Train 1a — about 30 minutes before (25–35 min)
-        if 25 <= mins <= 35:
-            sig = generate_pre_event_signal(event, "30M")
-            if sig:
-                if send_message(_format_event_signal(sig)):
-                    _sent_event_keys.add(sig["_key"])
-                    posted.append(sig)
-                    print("Posted PRE 30M", event["name"])
+        # Train 1 — ~30 min (22–38)
+        if 22 <= mins <= 38:
+            if generate_pre(event, "30M"):
+                posted.append("PRE30")
 
-        # Train 1b — few minutes before (3–8 min)
-        if 3 <= mins <= 8:
-            sig = generate_pre_event_signal(event, "5M")
-            if sig:
-                if send_message(_format_event_signal(sig)):
-                    _sent_event_keys.add(sig["_key"])
-                    posted.append(sig)
-                    print("Posted PRE 5M", event["name"])
+        # Train 1 final — few minutes (2–9)
+        if 2 <= mins <= 9:
+            if generate_pre(event, "5M"):
+                posted.append("PRE5")
 
-        # Train 2 — after event confirmation
-        if -60 <= mins <= 8:
-            sig = generate_post_event_signal(event)
-            if sig:
-                if send_message(_format_event_signal(sig)):
-                    _sent_event_keys.add(sig["_key"])
-                    posted.append(sig)
-                    print("Posted POST", event["name"])
+        # Train 2 — after release, wider window, retries every cycle
+        if -90 <= mins <= 12:
+            if generate_post(event):
+                posted.append("POST")
 
     return posted
