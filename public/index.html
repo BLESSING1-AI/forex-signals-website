@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Price Action Signals – Gold & FX</title>
-  <meta name="description" content="Institutional-grade price action signals for XAUUSD. Multi-timeframe structure, strict confirmation, 3-TP scaling. Educational only." />
+  <title>Price Action Signals – Gold &amp; FX</title>
+  <meta name="description" content="Buy Gold / Sell Gold signals. Price action + high-impact events (CPI, NFP, FOMC). Times in SAST. Educational only." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -20,209 +20,78 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body { font-family: 'Inter', system-ui, sans-serif; }
-    .signal-card { transition: transform 0.2s, box-shadow 0.2s; }
-    .signal-card:hover { transform: translateY(-2px); }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
 
-  <!-- Navbar -->
   <nav class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center font-bold text-slate-900 text-sm">PA</div>
         <div>
           <span class="font-semibold text-lg tracking-tight block leading-tight">Price Action Signals</span>
-          <span class="text-xs text-slate-500">Gold & FX</span>
+          <span class="text-xs text-slate-500">Gold • Events • SAST</span>
         </div>
       </div>
-      <div class="hidden sm:flex items-center gap-6 text-sm text-slate-400">
-        <a href="#signals" class="hover:text-gold-400 transition">Active Setups</a>
-        <a href="#howto" class="hover:text-gold-400 transition">How to Trade</a>
-        <a href="#risk" class="hover:text-gold-400 transition">Risk Rules</a>
-      </div>
+      <a href="https://t.me/PriceActionSignalsHub" target="_blank" class="text-sm px-3 py-1.5 rounded-lg bg-gold-500 text-slate-900 font-medium hover:bg-gold-400">Telegram</a>
     </div>
   </nav>
 
-  <!-- Hero -->
-  <header class="max-w-5xl mx-auto px-4 pt-12 pb-10 text-center">
+  <header class="max-w-5xl mx-auto px-4 pt-10 pb-8 text-center">
     <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-4">
       <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      Strict Mode • XAUUSD Focus • 1–2 Signals / Day Max
+      Live engine • Buy Gold / Sell Gold • Event trains
     </div>
-    <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">
-      Multi-Timeframe Price Action<br class="hidden sm:block" />
-      <span class="text-gold-400">Structure. Confirmation. Precision.</span>
+    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+      Gold Signals + High-Impact Events
     </h1>
-    <p class="text-slate-400 max-w-2xl mx-auto text-lg">
-      Higher-timeframe bias → Zone identification → Lower-timeframe confirmation.<br>
-      Clean 3-TP scaling with breakeven protection. No forced trades.
+    <p class="text-slate-400 max-w-2xl mx-auto">
+      Technical price action in strict mode. Event trains for CPI, NFP, FOMC and more —
+      <strong class="text-slate-300">Train 1</strong> ~30 min before, <strong class="text-slate-300">Train 2</strong> after confirmation.
+      All times in <strong class="text-gold-400">South African time (SAST)</strong>.
     </p>
   </header>
 
-  <!-- Active Signals -->
-  <section id="signals" class="max-w-5xl mx-auto px-4 pb-16">
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold">Active Setups</h2>
-      <span id="last-updated" class="text-xs text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">Loading...</span>
-    </div>
-
-    <div id="signals-container" class="grid gap-6">
-      <!-- Injected by JS -->
-    </div>
-  </section>
-
-  <!-- How to Trade -->
-  <section id="howto" class="bg-slate-900/50 border-y border-slate-800">
-    <div class="max-w-5xl mx-auto px-4 py-14">
-      <h2 class="text-2xl font-semibold mb-8 text-center">How These Signals Are Generated</h2>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">1. HTF Bias</div>
-          <h3 class="font-medium mb-2">D1 / H4 Structure</h3>
-          <p class="text-slate-400 text-sm">Only trade in the direction of clear Higher Highs / Higher Lows (bullish) or Lower Highs / Lower Lows (bearish). Conflicting HTF = no trade.</p>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">2. Zone</div>
-          <h3 class="font-medium mb-2">Area of Interest</h3>
-          <p class="text-slate-400 text-sm">Price must reach an unmitigated Order Block, S/R Flip, or Liquidity Sweep zone before any entry is considered.</p>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <div class="text-gold-400 font-bold text-lg mb-2">3. Confirmation</div>
-          <h3 class="font-medium mb-2">M15 / M5 Trigger</h3>
-          <p class="text-slate-400 text-sm">Wait for Break of Structure or strong Rejection (Pin Bar / Engulfing) on the close of the candle. Never enter mid-bar.</p>
-        </div>
+  <!-- Live bias / next event -->
+  <section class="max-w-5xl mx-auto px-4 pb-8">
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Structure lean into CPI</p>
+        <p class="text-2xl font-semibold text-red-400">SELL GOLD bias</p>
+        <p class="text-sm text-slate-400 mt-2">D1 + H4 lean bearish. Price consolidating ~4164. Prefer Train 2 confirmation after the print.</p>
       </div>
-
-      <div class="mt-10 grid sm:grid-cols-3 gap-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h3 class="font-medium mb-2 text-emerald-400">TP1</h3>
-          <p class="text-slate-400 text-sm">1:1.5 RR or key M15 level. Close 30–50%. Move Stop Loss to Breakeven.</p>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h3 class="font-medium mb-2 text-emerald-400">TP2</h3>
-          <p class="text-slate-400 text-sm">1:3 RR or H1 swing. Close another ~30%.</p>
-        </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h3 class="font-medium mb-2 text-emerald-400">TP3</h3>
-          <p class="text-slate-400 text-sm">1:5+ RR or major H4 level. Close remaining or trail structure.</p>
-        </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Next high-impact</p>
+        <p class="text-2xl font-semibold text-gold-400">US CPI</p>
+        <p class="text-sm text-slate-400 mt-2">14:30 SAST today • Train 1 ~14:00 SAST • Train 2 after release if confirmation prints</p>
       </div>
     </div>
   </section>
 
-  <!-- Risk Rules -->
-  <section id="risk" class="max-w-5xl mx-auto px-4 py-14">
-    <h2 class="text-2xl font-semibold mb-6 text-center">Non-Negotiable Risk Rules</h2>
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto">
-      <ul class="space-y-4 text-slate-300">
-        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>Risk maximum <strong>1%</strong> of account per trade (strict mode).</span></li>
-        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>Always calculate position size from the Stop Loss distance.</span></li>
-        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>Move Stop Loss to Breakeven after TP1 is hit.</span></li>
-        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>No revenge trading. One high-quality setup beats five forced ones.</span></li>
-        <li class="flex gap-3"><span class="text-gold-400 mt-0.5">✓</span><span>These are educational ideas only — not financial advice.</span></li>
-      </ul>
+  <section id="signals" class="max-w-5xl mx-auto px-4 pb-14">
+    <h2 class="text-xl font-semibold mb-4">How event trains work</h2>
+    <div class="grid sm:grid-cols-2 gap-4 mb-8">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="text-gold-400 font-bold mb-1">Train 1 — Before the number</div>
+        <p class="text-sm text-slate-400">~30 minutes before (plus a final alert a few minutes before). Directional <strong class="text-slate-200">Buy Gold</strong> or <strong class="text-slate-200">Sell Gold</strong> plan from HTF structure. Levels + SL + 3 TPs.</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="text-emerald-400 font-bold mb-1">Train 2 — After confirmation</div>
+        <p class="text-sm text-slate-400">After CPI/NFP/FOMC prints. Engine waits for reaction + confirmation candle, then signals again so you can ride the move with the market.</p>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+      <p class="text-slate-300 font-medium mb-2">Live signals post on Telegram first</p>
+      <p class="text-slate-500 text-sm max-w-md mx-auto mb-5">Strict technical setups + event trains (Buy Gold / Sell Gold) with SAST times. Join the channel for instant alerts.</p>
+      <a href="https://t.me/PriceActionSignalsHub" target="_blank" class="inline-block px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-slate-900 font-medium rounded-lg transition">Open Telegram Channel</a>
     </div>
   </section>
 
-  <!-- Disclaimer -->
-  <section class="border-t border-slate-800 bg-slate-900/30">
-    <div class="max-w-5xl mx-auto px-4 py-10 text-center">
-      <p class="text-slate-500 text-sm max-w-3xl mx-auto leading-relaxed">
-        <strong class="text-slate-400">Risk Disclaimer:</strong> Trading forex and CFDs involves substantial risk of loss and is not suitable for every investor.
-        Past performance is not indicative of future results. Setups on this site are for educational purposes only and do not constitute investment advice.
-        Always do your own analysis. Never trade with money you cannot afford to lose.
-      </p>
+  <section class="border-t border-slate-800 bg-slate-900/40">
+    <div class="max-w-5xl mx-auto px-4 py-10 text-center text-sm text-slate-500">
+      Educational only. Not financial advice. Trading involves substantial risk of loss.
     </div>
   </section>
-
-  <footer class="border-t border-slate-800 py-6 text-center text-slate-600 text-sm">
-    <p>Price Action Signals – Gold & FX • Strict Mode • Educational Only</p>
-  </footer>
-
-  <script>
-    const signals = [];
-
-    function renderSignals() {
-      const container = document.getElementById('signals-container');
-      const active = signals.filter(s => s.status === 'active' || s.status === 'tp1_hit' || s.status === 'tp2_hit');
-
-      document.getElementById('last-updated').textContent = active.length
-        ? `Active: ${active.length}`
-        : 'No active setups';
-
-      if (active.length === 0) {
-        container.innerHTML = `
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center">
-            <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-              <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <p class="text-slate-300 font-medium">No active high-quality setups</p>
-            <p class="text-slate-500 text-sm mt-2 max-w-md mx-auto">Strict mode is active. Signals only appear when HTF bias, zone, and M15/M5 confirmation are all aligned. Check the Telegram channel for the latest alerts.</p>
-            <a href="https://t.me/PriceActionSignalsHub" target="_blank" class="inline-block mt-6 px-5 py-2.5 bg-gold-500 hover:bg-gold-400 text-slate-900 font-medium rounded-lg transition">Join Telegram Channel</a>
-          </div>`;
-        return;
-      }
-
-      container.innerHTML = active.map(signal => {
-        const isBuy = signal.direction.toUpperCase() === 'BUY';
-        const dirColor = isBuy ? 'text-emerald-400' : 'text-red-400';
-        const dirBg = isBuy ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30';
-        const badge = isBuy ? 'BUY ✅' : 'SELL ✅';
-
-        return `
-          <article class="signal-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl shadow-black/20">
-            <div class="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-              <div class="flex items-center gap-3">
-                <span class="font-semibold text-lg tracking-wide">${signal.pair}</span>
-                <span class="text-xs uppercase tracking-wider text-slate-500">PRICE ACTION</span>
-              </div>
-              <span class="px-3 py-1 rounded-full text-sm font-medium border ${dirBg} ${dirColor}">${badge}</span>
-            </div>
-
-            <div class="p-6 grid sm:grid-cols-2 gap-6">
-              <div class="space-y-5">
-                <div>
-                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Entry Zone</p>
-                  <p class="text-xl font-semibold text-gold-400">${signal.entryZone}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Stop Loss</p>
-                  <p class="text-lg font-medium text-red-400/90">${signal.stopLoss}</p>
-                </div>
-                ${signal.context ? `<div class="pt-3 border-t border-slate-800"><p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Setup Context</p><p class="text-sm text-slate-300 leading-relaxed">${signal.context}</p></div>` : ''}
-              </div>
-
-              <div>
-                <p class="text-xs text-slate-500 uppercase tracking-wide mb-3">Take Profit Targets</p>
-                <div class="space-y-2">
-                  <div class="flex justify-between items-center bg-slate-950/60 rounded-lg px-4 py-3 border border-slate-800">
-                    <div><span class="text-sm font-medium text-slate-200">TP1</span><span class="text-xs text-slate-500 ml-2">Partial + BE</span></div>
-                    <span class="font-semibold text-emerald-400">${signal.tp1}</span>
-                  </div>
-                  <div class="flex justify-between items-center bg-slate-950/60 rounded-lg px-4 py-3 border border-slate-800">
-                    <div><span class="text-sm font-medium text-slate-200">TP2</span></div>
-                    <span class="font-semibold text-emerald-400">${signal.tp2}</span>
-                  </div>
-                  <div class="flex justify-between items-center bg-slate-950/60 rounded-lg px-4 py-3 border border-slate-800">
-                    <div><span class="text-sm font-medium text-slate-200">TP3</span><span class="text-xs text-slate-500 ml-2">Runner</span></div>
-                    <span class="font-semibold text-emerald-400">${signal.tp3}</span>
-                  </div>
-                </div>
-                <p class="text-xs text-slate-500 mt-3">Recommended Risk: <span class="text-slate-300">${signal.risk || '1%'}</span></p>
-              </div>
-            </div>
-
-            <div class="px-6 py-3 bg-slate-950/40 border-t border-slate-800 text-xs text-slate-600 flex flex-wrap justify-between gap-2">
-              <span>Strict Mode • Structure Confirmed</span>
-              <span>${signal.postedAt ? new Date(signal.postedAt).toLocaleString() : ''}</span>
-            </div>
-          </article>
-        `;
-      }).join('');
-    }
-
-    renderSignals();
-  </script>
 </body>
 </html>
