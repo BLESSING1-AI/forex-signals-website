@@ -1,4 +1,4 @@
-"""Telegram — short messages only"""
+"""Telegram — short messages for daily followers"""
 import requests
 from datetime import datetime
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
@@ -16,9 +16,7 @@ def send_message(text: str) -> bool:
             timeout=15,
         )
         ok = resp.json().get("ok", False)
-        if ok:
-            print(f"[{datetime.utcnow().isoformat()}] posted")
-        else:
+        if not ok:
             print("TG error:", resp.json())
         return ok
     except Exception as e:
@@ -26,7 +24,6 @@ def send_message(text: str) -> bool:
         return False
 
 def format_signal(signal: dict) -> str:
-    """Ultra-short technical signal."""
     d = signal["direction"].upper()
     gold = "BUY GOLD" if d == "BUY" else "SELL GOLD"
     return (
@@ -34,7 +31,7 @@ def format_signal(signal: dict) -> str:
         f"In: {signal['entry_zone']}\n"
         f"SL: {signal['stop_loss']}\n"
         f"TP1: {signal['tp1']} | TP2: {signal['tp2']} | TP3: {signal['tp3']}\n"
-        f"Risk 1% · PA setup"
+        f"Risk 1% · Daily PA"
     )
 
 def send_signal(signal: dict) -> bool:
@@ -48,7 +45,7 @@ def format_momentum(signal: dict) -> str:
         f"In: {signal['entry_zone']}\n"
         f"SL: {signal['stop_loss']}\n"
         f"TP1: {signal['tp1']} | TP2: {signal['tp2']}\n"
-        f"Small size · quick scalp · Risk 0.5%"
+        f"Risk 0.5% · scalp"
     )
 
 def send_momentum(signal: dict) -> bool:
