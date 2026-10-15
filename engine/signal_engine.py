@@ -1,7 +1,4 @@
-"""
-Main runner — EVERYDAY trades for members + events + momentum
-TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
-"""
+"""Main runner — daily trades + events + momentum"""
 from datetime import datetime, timezone
 from data_fetcher import get_multi_timeframe_data
 from structure import (
@@ -48,7 +45,6 @@ def calculate_targets(entry, stop, direction):
     }
 
 def _htf_bias_relaxed(d1, h4):
-    """Prefer full align; allow H4-only so daily trades still fire."""
     b1 = determine_bias(d1)
     b4 = determine_bias(h4)
     if b1 != "neutral" and b1 == b4:
@@ -66,13 +62,7 @@ def generate_signal():
         signals_today = 0
         last_signal_date = today
 
-    if signals_today >= MAX_SIGNALS_PER_DAY:
-        print("Max daily PA reached")
-        return None
-    if NEWS_BLACKOUT:
-        return None
-    if not is_session_active():
-        print("Outside session")
+    if signals_today >= MAX_SIGNALS_PER_DAY or NEWS_BLACKOUT or not is_session_active():
         return None
 
     data = get_multi_timeframe_data()
@@ -82,7 +72,6 @@ def generate_signal():
 
     bias, src = _htf_bias_relaxed(d1, h4)
     if not bias:
-        print("No HTF bias")
         return None
 
     confirmation = None
@@ -97,7 +86,6 @@ def generate_signal():
             confirmation = f"{name} {engulf or pin}"
             break
 
-    # Daily fallback: strong directional candle aligned with bias
     if not confirmation and len(m15) >= 1:
         c = m15.iloc[-1]
         body = float(c["close"] - c["open"])
@@ -109,7 +97,6 @@ def generate_signal():
                 confirmation = "15m impulse"
 
     if not confirmation:
-        print("No confirmation")
         return None
 
     structure = find_nearby_structure_level(m15, bias)
@@ -143,33 +130,27 @@ def generate_signal():
         "tp1": str(targets["tp1"]),
         "tp2": str(targets["tp2"]),
         "tp3": str(targets["tp3"]),
-        "tag": src,
     }
 
 def _morning_daily_note():
-    """Once per day: remind members daily trades are active."""
     global _daily_ping_date
     today = datetime.now(timezone.utc).date()
     if _daily_ping_date == today:
         return
     hour = datetime.now(timezone.utc).hour
-    # Around London open UTC 7–9
     if hour < 7 or hour > 10:
         return
     msg = (
         "☀️ DAILY MODE ON\n"
-        "Following all day:\n"
-        "⚡ PA setups (Buy/Sell Gold)\n"
+        "⚡ PA setups — Buy/Sell Gold\n"
         "🔥 Momentum scalps (0.5%)\n"
-        "🥇🥈 Event trains when news hits\n"
-        "Short alerts · Risk managed"
+        "🥇🥈 Event trains on news days"
     )
     if send_message(msg):
         _daily_ping_date = today
 
 def run_once():
     print(f"\n=== Run @ {datetime.now(timezone.utc).isoformat()} ===")
-
     try:
         _morning_daily_note()
     except Exception as e:
@@ -194,7 +175,7 @@ def run_once():
     if send_signal(signal):
         global signals_today
         signals_today += 1
-        print("PA posted", signals_today, "/", MAX_SIGNALS_PER_DAY)
+        print("PA posted", signals_today)
 
 if __name__ == "__main__":
     run_once()

@@ -1,5 +1,5 @@
 """
-Event trains — short msgs, SAST, Train1 + Train2, auto next-event
+Event trains — SAST, Train1 + Train2, auto next-event
 TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
 """
 from datetime import datetime, timezone, timedelta
@@ -54,7 +54,6 @@ def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Di
         stop = round(max(structure, price) + buf, 2)
     mid = (el + eh) / 2
     risk = abs(mid - stop)
-    # User style: TP1 = furthest (5R), TP2 = 3R, TP3 = closest (1.5R)
     if bias == "bullish":
         t1 = round(mid + risk * 5.0, 2)
         t2 = round(mid + risk * 3.0, 2)
@@ -122,7 +121,6 @@ def _announce_next_events() -> None:
     )
     if send_message(msg):
         _sent.add(k)
-        print("Next-event announced")
 
 def generate_pre(event: Dict, tag: str) -> bool:
     k = _key(event, f"PRE{tag}")
@@ -141,8 +139,7 @@ def generate_pre(event: Dict, tag: str) -> bool:
         structure = float(m15["low"].tail(20).min()) if bias == "bullish" else float(m15["high"].tail(20).max())
     levels = _levels(bias, price, structure, wide=True)
     mins = event.get("minutes_to_event", 0)
-    text = _short_pre(event, bias, levels, mins, tag)
-    if send_message(text):
+    if send_message(_short_pre(event, bias, levels, mins, tag)):
         _sent.add(k)
         return True
     return False
@@ -185,7 +182,6 @@ def generate_post(event: Dict) -> bool:
             conf = "candle"
 
     if not bias:
-        print("Train2: no confirmation yet")
         return False
 
     price = float(tf["close"].iloc[-1])
@@ -193,22 +189,19 @@ def generate_post(event: Dict) -> bool:
     if structure is None:
         structure = float(m15["low"].tail(12).min()) if bias == "bullish" else float(m15["high"].tail(12).max())
     levels = _levels(bias, price, structure, wide=False)
-    text = _short_post(event, bias, levels, conf)
-    if send_message(text):
+    if send_message(_short_post(event, bias, levels, conf)):
         _sent.add(k)
         return True
     return False
 
 def run_event_cycle() -> List[str]:
     posted = []
-
     try:
         _announce_next_events()
     except Exception as e:
         print("next-event error", e)
 
     window = get_events_in_window(minutes_before=40, minutes_after=90)
-
     seen_slot = set()
     unique = []
     for e in window:
@@ -220,17 +213,10 @@ def run_event_cycle() -> List[str]:
 
     for event in unique:
         mins = event.get("minutes_to_event", 0)
-
-        if 22 <= mins <= 38:
-            if generate_pre(event, "30M"):
-                posted.append("PRE30")
-
-        if 2 <= mins <= 9:
-            if generate_pre(event, "5M"):
-                posted.append("PRE5")
-
-        if -90 <= mins <= 12:
-            if generate_post(event):
-                posted.append("POST")
-
+        if 22 <= mins <= 38 and generate_pre(event, "30M"):
+            posted.append("PRE30")
+        if 2 <= mins <= 9 and generate_pre(event, "5M"):
+            posted.append("PRE5")
+        if -90 <= mins <= 12 and generate_post(event):
+            posted.append("POST")
     return posted
