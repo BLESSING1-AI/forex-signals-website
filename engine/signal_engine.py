@@ -1,4 +1,6 @@
-"""Main runner: events + momentum scalps + strict PA"""
+"""Main runner: events + momentum scalps + strict PA
+TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
+"""
 from datetime import datetime, timezone
 from data_fetcher import get_multi_timeframe_data
 from structure import (
@@ -31,9 +33,18 @@ def is_session_active() -> bool:
 
 def calculate_targets(entry, stop, direction):
     risk = abs(entry - stop)
+    # TP1 furthest (5R), TP2 (3R), TP3 closest (1.5R)
     if direction == "bullish":
-        return {"tp1": round(entry + risk * 1.5, 2), "tp2": round(entry + risk * 3, 2), "tp3": round(entry + risk * 5, 2)}
-    return {"tp1": round(entry - risk * 1.5, 2), "tp2": round(entry - risk * 3, 2), "tp3": round(entry - risk * 5, 2)}
+        return {
+            "tp1": round(entry + risk * 5.0, 2),
+            "tp2": round(entry + risk * 3.0, 2),
+            "tp3": round(entry + risk * 1.5, 2),
+        }
+    return {
+        "tp1": round(entry - risk * 5.0, 2),
+        "tp2": round(entry - risk * 3.0, 2),
+        "tp3": round(entry - risk * 1.5, 2),
+    }
 
 def generate_signal():
     global signals_today, last_signal_date
@@ -87,7 +98,8 @@ def generate_signal():
     if risk < 5:
         return None
     targets = calculate_targets(mid, stop, bias)
-    if abs(targets["tp1"] - mid) / risk < MIN_RR_TP1:
+    # RR check on closest target (TP3 = 1.5R)
+    if abs(float(targets["tp3"]) - mid) / risk < MIN_RR_TP1:
         return None
 
     return {

@@ -1,7 +1,6 @@
 """
-Small momentum / scalp trades for account growth
-Quick M5–M15 continuation during strong directional impulse
-Risk 0.5% · tight targets
+Small momentum / scalp trades
+TP1 = further target, TP2 = closer (same inverted style)
 """
 from datetime import datetime, timezone
 from typing import Optional, Dict
@@ -33,7 +32,6 @@ def generate_momentum() -> Optional[Dict]:
     if not _session():
         return None
 
-    # Cooldown 45 min between momentum signals
     now = datetime.now(timezone.utc)
     if _last_mom_time and (now - _last_mom_time).total_seconds() < 45 * 60:
         return None
@@ -51,24 +49,19 @@ def generate_momentum() -> Optional[Dict]:
     if len(tf) < 5:
         return None
 
-    # Need aligned impulse with H4
     engulf = detect_engulfing(tf)
     pin = detect_pin_bar(tf)
     c = tf.iloc[-1]
     body = float(c["close"] - c["open"])
     rng = float(c["high"] - c["low"]) or 1
 
-    ok = False
     if h4_bias == "bullish" and (engulf == "bullish" or pin == "bullish" or (body > 0 and abs(body) / rng > 0.6)):
-        ok = True
         direction = "BUY"
     elif h4_bias == "bearish" and (engulf == "bearish" or pin == "bearish" or (body < 0 and abs(body) / rng > 0.6)):
-        ok = True
         direction = "SELL"
     else:
         return None
 
-    # Momentum strength: last 3 candles mostly same direction
     recent = tf.tail(3)
     ups = sum(1 for _, r in recent.iterrows() if r["close"] > r["open"])
     downs = 3 - ups
@@ -78,22 +71,22 @@ def generate_momentum() -> Optional[Dict]:
         return None
 
     price = float(c["close"])
-    # Tight SL for scalp
     if direction == "BUY":
         sl = round(float(tf["low"].tail(5).min()) - 3, 2)
         risk = abs(price - sl)
         if risk < 2 or risk > 25:
             return None
-        tp1 = round(price + risk * 1.2, 2)
-        tp2 = round(price + risk * 2.0, 2)
+        # TP1 further, TP2 closer
+        tp1 = round(price + risk * 2.0, 2)
+        tp2 = round(price + risk * 1.2, 2)
         el, eh = round(price - 0.5, 2), round(price + 0.4, 2)
     else:
         sl = round(float(tf["high"].tail(5).max()) + 3, 2)
         risk = abs(sl - price)
         if risk < 2 or risk > 25:
             return None
-        tp1 = round(price - risk * 1.2, 2)
-        tp2 = round(price - risk * 2.0, 2)
+        tp1 = round(price - risk * 2.0, 2)
+        tp2 = round(price - risk * 1.2, 2)
         el, eh = round(price - 0.4, 2), round(price + 0.5, 2)
 
     return {

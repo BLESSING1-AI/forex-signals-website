@@ -1,5 +1,6 @@
 """
 Event trains — short msgs, SAST, Train1 + Train2, auto next-event
+TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List
@@ -53,10 +54,15 @@ def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Di
         stop = round(max(structure, price) + buf, 2)
     mid = (el + eh) / 2
     risk = abs(mid - stop)
+    # User style: TP1 = furthest (5R), TP2 = 3R, TP3 = closest (1.5R)
     if bias == "bullish":
-        t1, t2, t3 = round(mid + risk * 1.5, 2), round(mid + risk * 3, 2), round(mid + risk * 5, 2)
+        t1 = round(mid + risk * 5.0, 2)
+        t2 = round(mid + risk * 3.0, 2)
+        t3 = round(mid + risk * 1.5, 2)
     else:
-        t1, t2, t3 = round(mid - risk * 1.5, 2), round(mid - risk * 3, 2), round(mid - risk * 5, 2)
+        t1 = round(mid - risk * 5.0, 2)
+        t2 = round(mid - risk * 3.0, 2)
+        t3 = round(mid - risk * 1.5, 2)
     return {"zone": f"{el}-{eh}", "sl": str(stop), "tp1": str(t1), "tp2": str(t2), "tp3": str(t3)}
 
 def _short_pre(event, bias, levels, mins, tag) -> str:
@@ -78,20 +84,17 @@ def _short_post(event, bias, levels, conf) -> str:
         f"In: {levels['zone']}\n"
         f"SL: {levels['sl']}\n"
         f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
-        f"BE after TP1 · Risk 1%"
+        f"BE after TP3 · Risk 1%"
     )
 
 def _announce_next_events() -> None:
-    """Always surface the next high-impact cluster (e.g. PPI day)."""
     upcoming = fetch_upcoming_events(hours_ahead=48)
     now = datetime.now(timezone.utc)
     future = [e for e in upcoming if e["time"] > now + timedelta(minutes=15)]
     if not future:
         return
 
-    # Group by same hour (data cluster)
     first = future[0]
-    cluster_time = first["time"].replace(minute=0, second=0, microsecond=0)
     cluster = [e for e in future if abs((e["time"] - first["time"]).total_seconds()) < 3600]
 
     day_key = first["time"].strftime("%Y%m%d%H")
@@ -165,9 +168,8 @@ def generate_post(event: Dict) -> bool:
     elif pin in ("bullish", "bearish"):
         bias, conf = pin, f"{pin} pin"
 
-    # Loose impulse: last 1–3 candles net direction
     if not bias and len(tf) >= 3:
-        c0, c1, c2 = tf.iloc[-1], tf.iloc[-2], tf.iloc[-3]
+        c0, c2 = tf.iloc[-1], tf.iloc[-3]
         net = float(c0["close"] - c2["open"])
         body = float(c0["close"] - c0["open"])
         rng = float(c0["high"] - c0["low"]) or 1
@@ -175,7 +177,6 @@ def generate_post(event: Dict) -> bool:
             bias = "bullish" if (net > 0 or body > 0) else "bearish"
             conf = "impulse"
 
-    # Even looser: close vs open of last closed bar only
     if not bias and len(tf) >= 1:
         c = tf.iloc[-1]
         body = float(c["close"] - c["open"])
@@ -201,7 +202,6 @@ def generate_post(event: Dict) -> bool:
 def run_event_cycle() -> List[str]:
     posted = []
 
-    # Always try to announce next upcoming cluster
     try:
         _announce_next_events()
     except Exception as e:
@@ -209,7 +209,6 @@ def run_event_cycle() -> List[str]:
 
     window = get_events_in_window(minutes_before=40, minutes_after=90)
 
-    # Deduplicate same-time cluster → one representative event name
     seen_slot = set()
     unique = []
     for e in window:
@@ -217,23 +216,19 @@ def run_event_cycle() -> List[str]:
         if slot in seen_slot:
             continue
         seen_slot.add(slot)
-        # Prefer PPI/CPI/NFP/FOMC naming if in cluster
         unique.append(e)
 
     for event in unique:
         mins = event.get("minutes_to_event", 0)
 
-        # Train 1 — ~30 min (22–38)
         if 22 <= mins <= 38:
             if generate_pre(event, "30M"):
                 posted.append("PRE30")
 
-        # Train 1 final — few minutes (2–9)
         if 2 <= mins <= 9:
             if generate_pre(event, "5M"):
                 posted.append("PRE5")
 
-        # Train 2 — after release, wider window, retries every cycle
         if -90 <= mins <= 12:
             if generate_post(event):
                 posted.append("POST")
