@@ -2,8 +2,10 @@ name: Price Action Signal Engine
 
 on:
   schedule:
-    - cron: "0,15,30,45 6-21 * * 1-5"
-    - cron: "0,10,20,30,40,50 11-15 * * 1-5"
+    # Every 15 min through active gold hours (UTC weekdays)
+    - cron: "0,15,30,45 0-22 * * 1-5"
+    # Extra density around US data / NY (UTC 11-20)
+    - cron: "5,10,20,25,35,40,50,55 11-20 * * 1-5"
   workflow_dispatch:
 
 jobs:
