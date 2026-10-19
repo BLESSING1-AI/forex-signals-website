@@ -2,10 +2,8 @@ name: Price Action Signal Engine
 
 on:
   schedule:
-    # Every 15 min through active gold hours (UTC weekdays)
-    - cron: "0,15,30,45 0-22 * * 1-5"
-    # Extra density around US data / NY (UTC 11-20)
-    - cron: "5,10,20,25,35,40,50,55 11-20 * * 1-5"
+    # Simple reliable cadence — every 15 min weekdays UTC
+    - cron: "*/15 * * * 1-5"
   workflow_dispatch:
 
 jobs:
@@ -25,5 +23,6 @@ jobs:
         working-directory: engine
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          # Force numeric — do not use @username secret
+          TELEGRAM_CHANNEL_ID: "-1004499950812"
         run: python signal_engine.py

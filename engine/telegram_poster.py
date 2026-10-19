@@ -1,24 +1,47 @@
-"""Telegram — short messages for daily followers"""
+"""Telegram poster — always uses working channel ID"""
 import requests
 from datetime import datetime
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
+# Hard fallback if secrets are wrong
+CHANNEL_FALLBACK = "-1004499950812"
+
+def _chat_id() -> str:
+    cid = str(TELEGRAM_CHANNEL_ID or "").strip()
+    if cid.lstrip("-").isdigit():
+        return cid
+    return CHANNEL_FALLBACK
+
 def send_message(text: str) -> bool:
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    chat = _chat_id()
     try:
         resp = requests.post(
             url,
             json={
-                "chat_id": TELEGRAM_CHANNEL_ID,
+                "chat_id": chat,
                 "text": text.strip(),
                 "disable_web_page_preview": True,
             },
             timeout=15,
         )
-        ok = resp.json().get("ok", False)
-        if not ok:
-            print("TG error:", resp.json())
-        return ok
+        data = resp.json()
+        if data.get("ok"):
+            return True
+        print("TG error:", data)
+        # one retry with fallback
+        if chat != CHANNEL_FALLBACK:
+            resp2 = requests.post(
+                url,
+                json={
+                    "chat_id": CHANNEL_FALLBACK,
+                    "text": text.strip(),
+                    "disable_web_page_preview": True,
+                },
+                timeout=15,
+            )
+            return resp2.json().get("ok", False)
+        return False
     except Exception as e:
         print("Send failed:", e)
         return False
