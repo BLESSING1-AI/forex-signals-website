@@ -1,4 +1,7 @@
-"""Main runner — daily trades + events + momentum"""
+"""
+Quality daily PA + events + serious momentum
+TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
+"""
 from datetime import datetime, timezone
 from data_fetcher import get_multi_timeframe_data
 from structure import (
@@ -44,15 +47,16 @@ def calculate_targets(entry, stop, direction):
         "tp3": round(entry - risk * 1.5, 2),
     }
 
-def _htf_bias_relaxed(d1, h4):
+def _htf_bias_quality(d1, h4):
+    """Prefer D1+H4 agree. Allow clean H4 only if D1 not opposite."""
     b1 = determine_bias(d1)
     b4 = determine_bias(h4)
     if b1 != "neutral" and b1 == b4:
         return b1, "D1+H4"
-    if b4 != "neutral":
-        return b4, "H4"
-    if b1 != "neutral":
-        return b1, "D1"
+    if b4 != "neutral" and b1 != ("bearish" if b4 == "bullish" else "bullish"):
+        # H4 clear, D1 not fighting
+        if b1 == "neutral" or b1 == b4:
+            return b4, "H4"
     return None, ""
 
 def generate_signal():
@@ -70,10 +74,12 @@ def generate_signal():
     if any(x is None or x.empty for x in [d1, h4, m15]):
         return None
 
-    bias, src = _htf_bias_relaxed(d1, h4)
+    bias, src = _htf_bias_quality(d1, h4)
     if not bias:
+        print("PA: no quality HTF bias")
         return None
 
+    # Quality confirmation only: engulfing or pin (not weak impulse alone)
     confirmation = None
     for name, df in [("15m", m15), ("5m", m5)]:
         if df is None or df.empty:
@@ -86,41 +92,60 @@ def generate_signal():
             confirmation = f"{name} {engulf or pin}"
             break
 
-    if not confirmation and len(m15) >= 1:
+    # Strong body only if also with HTF and decent size
+    if not confirmation and len(m15) >= 2:
         c = m15.iloc[-1]
         body = float(c["close"] - c["open"])
         rng = float(c["high"] - c["low"]) or 1
-        if abs(body) / rng >= 0.55:
+        if abs(body) >= 5 and abs(body) / rng >= 0.65:
             if bias == "bullish" and body > 0:
-                confirmation = "15m impulse"
+                confirmation = "15m strong body"
             elif bias == "bearish" and body < 0:
-                confirmation = "15m impulse"
+                confirmation = "15m strong body"
 
     if not confirmation:
+        print("PA: no quality confirmation")
         return None
 
     structure = find_nearby_structure_level(m15, bias)
     if structure is None:
-        structure = float(m15["low"].tail(20).min()) if bias == "bullish" else float(m15["high"].tail(20).max())
+        structure = float(m15["low"].tail(25).min()) if bias == "bullish" else float(m15["high"].tail(25).max())
 
     price = float(m15["close"].iloc[-1])
+
+    # Prefer entry zone toward structure (limit-style pullback area)
     if bias == "bullish":
-        el, eh = round(price - 1.5, 2), round(price + 0.5, 2)
-        stop = round(min(structure, price) - XAU_SL_BUFFER, 2)
+        zone_mid = (price + structure) / 2 if structure < price else price
+        el = round(min(structure + 2, zone_mid - 1), 2)
+        eh = round(price + 0.5, 2)
+        if el > eh:
+            el, eh = round(price - 2, 2), round(price + 0.5, 2)
+        stop = round(structure - XAU_SL_BUFFER, 2)
+        if stop >= el:
+            stop = round(el - XAU_SL_BUFFER, 2)
         direction = "BUY"
     else:
-        el, eh = round(price - 0.5, 2), round(price + 1.5, 2)
-        stop = round(max(structure, price) + XAU_SL_BUFFER, 2)
+        zone_mid = (price + structure) / 2 if structure > price else price
+        el = round(price - 0.5, 2)
+        eh = round(max(structure - 2, zone_mid + 1), 2)
+        if el > eh:
+            el, eh = round(price - 0.5, 2), round(price + 2, 2)
+        stop = round(structure + XAU_SL_BUFFER, 2)
+        if stop <= eh:
+            stop = round(eh + XAU_SL_BUFFER, 2)
         direction = "SELL"
 
     mid = (el + eh) / 2
     risk = abs(mid - stop)
-    if risk < 4:
+    if risk < 8 or risk > 80:
+        print(f"PA: risk out of band {risk:.1f}")
         return None
 
     targets = calculate_targets(mid, stop, bias)
     if abs(float(targets["tp3"]) - mid) / risk < MIN_RR_TP1:
         return None
+
+    print(f"QUALITY PA {direction} {src} conf={confirmation}")
 
     return {
         "pair": "XAUUSD",
@@ -141,10 +166,10 @@ def _morning_daily_note():
     if hour < 7 or hour > 10:
         return
     msg = (
-        "☀️ DAILY MODE ON\n"
-        "⚡ PA setups — Buy/Sell Gold\n"
-        "🔥 Momentum scalps (0.5%)\n"
-        "🥇🥈 Event trains on news days"
+        "☀️ QUALITY MODE\n"
+        "⚡ Daily PA — clean HTF + confirmation\n"
+        "🔥 Momentum — strong moves only\n"
+        "🥇🥈 Event trains on news"
     )
     if send_message(msg):
         _daily_ping_date = today
@@ -170,7 +195,7 @@ def run_once():
 
     signal = generate_signal()
     if signal is None:
-        print("No PA setup this cycle")
+        print("No quality PA this cycle")
         return
     if send_signal(signal):
         global signals_today
