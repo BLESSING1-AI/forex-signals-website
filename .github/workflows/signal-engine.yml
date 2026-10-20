@@ -15,9 +15,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: engine/.signal_state.json
-          key: signal-state-${{ runner.os }}-v2
+          # Unique key each run so cache can be written after updates
+          key: signal-state-${{ github.run_id }}
           restore-keys: |
-            signal-state-${{ runner.os }}-
+            signal-state-
 
       - uses: actions/setup-python@v5
         with:
@@ -36,9 +37,4 @@ jobs:
           TELEGRAM_CHANNEL_ID: "-1004499950812"
         run: python signal_engine.py
 
-      - name: Save signal state
-        if: always()
-        uses: actions/cache@v4
-        with:
-          path: engine/.signal_state.json
-          key: signal-state-${{ runner.os }}-v2
+      # Cache is saved automatically at job end for the unique key above
