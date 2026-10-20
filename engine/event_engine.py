@@ -1,18 +1,22 @@
 """
-Event trains — SAST, Train1 + Train2, auto next-event
-TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
+Event trains — no spam
+- Once per day: morning notice for today's / next high-impact
+- Train 1 ~30m before (plan)
+- Few minutes before (final reminder + plan)
+- Train 2 after confirm (once)
 """
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Set
 
 from event_calendar import get_events_in_window, fetch_upcoming_events
 from data_fetcher import get_multi_timeframe_data
 from structure import determine_bias, detect_engulfing, detect_pin_bar, find_nearby_structure_level
 from telegram_poster import send_message
-from config import XAU_SL_BUFFER, DEFAULT_RISK_PERCENT
+from config import XAU_SL_BUFFER
+from state_store import load_sent, save_sent
 
 SAST = timezone(timedelta(hours=2))
-_sent = set()
+_sent: Set[str] = set()
 
 def _sast(dt: datetime) -> str:
     if dt.tzinfo is None:
@@ -29,6 +33,12 @@ def _key(event: Dict, kind: str) -> str:
 
 def _gold(bias: str) -> str:
     return "BUY GOLD" if bias == "bullish" else "SELL GOLD"
+
+def _already(k: str) -> bool:
+    return k in _sent
+
+def _mark(k: str) -> None:
+    _sent.add(k)
 
 def _htf_bias() -> Optional[str]:
     data = get_multi_timeframe_data()
@@ -86,20 +96,38 @@ def _short_post(event, bias, levels, conf) -> str:
         f"BE after TP3 · Risk 1%"
     )
 
-def _announce_next_events() -> None:
-    upcoming = fetch_upcoming_events(hours_ahead=48)
+def _morning_window() -> bool:
+    """Once-daily slot: 07:00–07:20 SAST (05:00–05:20 UTC)."""
     now = datetime.now(timezone.utc)
-    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=15)]
+    sast_now = now.astimezone(SAST)
+    return sast_now.hour == 7 and sast_now.minute < 20
+
+def _announce_once_today() -> None:
+    """
+    One message per calendar day (SAST) about today's high-impact cluster,
+    or tomorrow's if nothing left today.
+    Only fires in the morning window + state key prevents repeats.
+    """
+    if not _morning_window():
+        return
+
+    now = datetime.now(timezone.utc)
+    sast_today = now.astimezone(SAST).date()
+    day_key = f"DAILY_NOTICE:{sast_today.isoformat()}"
+    if _already(day_key):
+        return
+
+    upcoming = fetch_upcoming_events(hours_ahead=48)
+    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=10)]
     if not future:
+        _mark(day_key)
         return
 
-    first = future[0]
-    cluster = [e for e in future if abs((e["time"] - first["time"]).total_seconds()) < 3600]
-
-    day_key = first["time"].strftime("%Y%m%d%H")
-    k = f"NEXT:{day_key}"
-    if k in _sent:
-        return
+    # Prefer events on this SAST day; else next day
+    today_ev = [e for e in future if e["time"].astimezone(SAST).date() == sast_today]
+    pool = today_ev if today_ev else future
+    first = pool[0]
+    cluster = [e for e in pool if abs((e["time"] - first["time"]).total_seconds()) < 3600]
 
     names = []
     seen = set()
@@ -112,19 +140,22 @@ def _announce_next_events() -> None:
     lean = _htf_bias()
     lean_txt = _gold(lean) if lean else "TBD closer to release"
 
+    when_label = "TODAY" if first["time"].astimezone(SAST).date() == sast_today else "TOMORROW"
+
     msg = (
-        f"📅 NEXT EVENT\n"
+        f"📅 {when_label}'S HIGH IMPACT\n"
         f"{_sast_full(first['time'])}\n"
         + "\n".join(f"• {n}" for n in names) +
         f"\nLean: {lean_txt}\n"
-        f"Train 1 ~30m before · Train 2 after confirm"
+        f"Train 1 ~30m before · final alert a few min before"
     )
     if send_message(msg):
-        _sent.add(k)
+        _mark(day_key)
+        print("Daily event notice sent")
 
 def generate_pre(event: Dict, tag: str) -> bool:
     k = _key(event, f"PRE{tag}")
-    if k in _sent:
+    if _already(k):
         return False
     bias = _htf_bias()
     if not bias:
@@ -140,13 +171,13 @@ def generate_pre(event: Dict, tag: str) -> bool:
     levels = _levels(bias, price, structure, wide=True)
     mins = event.get("minutes_to_event", 0)
     if send_message(_short_pre(event, bias, levels, mins, tag)):
-        _sent.add(k)
+        _mark(k)
         return True
     return False
 
 def generate_post(event: Dict) -> bool:
     k = _key(event, "POST")
-    if k in _sent:
+    if _already(k):
         return False
 
     data = get_multi_timeframe_data()
@@ -190,18 +221,21 @@ def generate_post(event: Dict) -> bool:
         structure = float(m15["low"].tail(12).min()) if bias == "bullish" else float(m15["high"].tail(12).max())
     levels = _levels(bias, price, structure, wide=False)
     if send_message(_short_post(event, bias, levels, conf)):
-        _sent.add(k)
+        _mark(k)
         return True
     return False
 
 def run_event_cycle() -> List[str]:
+    global _sent
+    _sent = load_sent()
     posted = []
-    try:
-        _announce_next_events()
-    except Exception as e:
-        print("next-event error", e)
 
-    window = get_events_in_window(minutes_before=40, minutes_after=90)
+    try:
+        _announce_once_today()
+    except Exception as e:
+        print("daily notice error", e)
+
+    window = get_events_in_window(minutes_before=40, minutes_after=45)
     seen_slot = set()
     unique = []
     for e in window:
@@ -213,10 +247,18 @@ def run_event_cycle() -> List[str]:
 
     for event in unique:
         mins = event.get("minutes_to_event", 0)
-        if 22 <= mins <= 38 and generate_pre(event, "30M"):
+
+        # ~30 min before — once (state key)
+        if 25 <= mins <= 35 and generate_pre(event, "30M"):
             posted.append("PRE30")
-        if 2 <= mins <= 9 and generate_pre(event, "5M"):
+
+        # few minutes before — once
+        if 3 <= mins <= 9 and generate_pre(event, "5M"):
             posted.append("PRE5")
-        if -90 <= mins <= 12 and generate_post(event):
+
+        # Train 2 — once only (state key), shortly after release
+        if -40 <= mins <= 10 and generate_post(event):
             posted.append("POST")
+
+    save_sent(_sent)
     return posted
