@@ -112,11 +112,11 @@ def score_setup(
         reasons.append(f"{engulf or pin} rejection")
     if m15_bias == direction:
         struct_pts += 4
-    # trending market without classic swings still gets partial structure from displacement direction
     signed_pre = net5 if direction == "bullish" else -net5
-    if struct_pts == 0 and signed_pre >= 10:
-        struct_pts = 8
-        reasons.append("Impulse structure")
+    if struct_pts < 10 and signed_pre >= 10:
+        struct_pts = max(struct_pts, 10)
+        if "Impulse structure" not in reasons:
+            reasons.append("Impulse structure")
     struct_pts = min(20, struct_pts)
     score += struct_pts
 
@@ -127,7 +127,7 @@ def score_setup(
         mom_pts = 20
         reasons.append("Strong displacement")
     elif signed >= 12:
-        mom_pts = 15
+        mom_pts = 16
         reasons.append("Solid momentum")
     elif signed >= 6:
         mom_pts = 10
@@ -136,7 +136,7 @@ def score_setup(
         mom_pts = 5
     score += mom_pts
 
-    # HTF 15
+    # HTF 15 — bonus, not hard gate
     htf_pts = 0
     if h4_bias == direction and d1_bias == direction:
         htf_pts = 15
@@ -151,7 +151,8 @@ def score_setup(
         htf_pts = 0
         reasons.append("HTF opposing (score reduced)")
     else:
-        htf_pts = 4  # neutral HTF — slight credit if LTF clear
+        # neutral HTF: partial credit if LTF momentum is strong
+        htf_pts = 8 if mom_pts >= 16 else 4
     score += htf_pts
 
     # Liquidity 10
@@ -174,16 +175,16 @@ def score_setup(
         fvg_pts = 2
     score += fvg_pts
 
-    # Vol 10
+    # Vol 10 — relative + absolute gold ranges
     vol_pts = 0
     avg_rng = float((m15["high"] - m15["low"]).tail(20).mean()) or 1
-    if rng5 >= avg_rng * 2.2:
+    if rng5 >= avg_rng * 2.0 or rng5 >= 20:
         vol_pts = 10
         reasons.append("Range expansion")
-    elif rng5 >= avg_rng * 1.4:
-        vol_pts = 6
-    elif rng5 >= avg_rng:
-        vol_pts = 3
+    elif rng5 >= avg_rng * 1.3 or rng5 >= 12:
+        vol_pts = 7
+    elif rng5 >= avg_rng or rng5 >= 6:
+        vol_pts = 4
     score += vol_pts
 
     # Session 5
@@ -232,13 +233,12 @@ def score_setup(
     rr = abs(tp3 - mid) / risk if risk else 0.0
     rr = round(rr, 2)
 
-    # RR 10
     rr_pts = 0
     if rr >= 2.5:
         rr_pts = 10
     elif rr >= 2.0:
         rr_pts = 8
-    elif rr >= MIN_RR - 0.05:  # float tolerance
+    elif rr + 0.05 >= MIN_RR:
         rr_pts = 6
         rr = max(rr, MIN_RR)
     score += rr_pts
@@ -250,7 +250,6 @@ def score_setup(
 
     score = int(max(0, min(100, score)))
 
-    # Hard risk gates — never loosen
     if rr + 1e-9 < MIN_RR:
         return None
     if mom_pts < 5 and struct_pts < 8:
