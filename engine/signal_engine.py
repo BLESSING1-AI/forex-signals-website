@@ -1,6 +1,7 @@
 """
-Quality daily PA + events + serious momentum
-TP order: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
+Quality daily PA + events + momentum
+Guarantee: at least 1 gold signal per trading day (HTF lean fallback)
+TP: TP1 furthest (5R) · TP2 (3R) · TP3 closest (1.5R)
 """
 from datetime import datetime, timezone
 from data_fetcher import get_multi_timeframe_data
@@ -14,6 +15,7 @@ from config import (
     NEWS_BLACKOUT,
     LONDON_START, LONDON_END, NY_START, NY_END,
 )
+from state_store import signals_posted_today, mark_signal_posted, load_sent, save_sent
 
 try:
     from event_engine import run_event_cycle
@@ -25,13 +27,12 @@ try:
 except Exception:
     run_momentum = None
 
-signals_today = 0
-last_signal_date = None
-_daily_ping_date = None
-
 def is_session_active() -> bool:
     hour = datetime.now(timezone.utc).hour
     return (LONDON_START <= hour < LONDON_END) or (NY_START <= hour < NY_END)
+
+def is_weekday() -> bool:
+    return datetime.now(timezone.utc).weekday() < 5
 
 def calculate_targets(entry, stop, direction):
     risk = abs(entry - stop)
@@ -48,25 +49,74 @@ def calculate_targets(entry, stop, direction):
     }
 
 def _htf_bias_quality(d1, h4):
-    """Prefer D1+H4 agree. Allow clean H4 only if D1 not opposite."""
     b1 = determine_bias(d1)
     b4 = determine_bias(h4)
     if b1 != "neutral" and b1 == b4:
         return b1, "D1+H4"
     if b4 != "neutral" and b1 != ("bearish" if b4 == "bullish" else "bullish"):
-        # H4 clear, D1 not fighting
         if b1 == "neutral" or b1 == b4:
             return b4, "H4"
     return None, ""
 
-def generate_signal():
-    global signals_today, last_signal_date
-    today = datetime.now(timezone.utc).date()
-    if last_signal_date != today:
-        signals_today = 0
-        last_signal_date = today
+def _htf_bias_any(d1, h4, m15):
+    """Fallback lean — still needs a clear direction."""
+    b = _htf_bias_quality(d1, h4)
+    if b[0]:
+        return b
+    b4 = determine_bias(h4)
+    if b4 != "neutral":
+        return b4, "H4 lean"
+    b15 = determine_bias(m15)
+    if b15 != "neutral":
+        return b15, "M15 lean"
+    return None, ""
 
-    if signals_today >= MAX_SIGNALS_PER_DAY or NEWS_BLACKOUT or not is_session_active():
+def _build_levels(bias, price, structure):
+    if bias == "bullish":
+        el = round(min(structure + 2, price - 1.5), 2)
+        eh = round(price + 0.5, 2)
+        if el > eh:
+            el, eh = round(price - 2, 2), round(price + 0.5, 2)
+        stop = round(structure - XAU_SL_BUFFER, 2)
+        if stop >= el:
+            stop = round(el - XAU_SL_BUFFER, 2)
+        direction = "BUY"
+    else:
+        el = round(price - 0.5, 2)
+        eh = round(max(structure - 2, price + 1.5), 2)
+        if el > eh:
+            el, eh = round(price - 0.5, 2), round(price + 2, 2)
+        stop = round(structure + XAU_SL_BUFFER, 2)
+        if stop <= eh:
+            stop = round(eh + XAU_SL_BUFFER, 2)
+        direction = "SELL"
+
+    mid = (el + eh) / 2
+    risk = abs(mid - stop)
+    if risk < 6:
+        return None
+    if risk > 90:
+        # tighten extreme SL
+        if direction == "BUY":
+            stop = round(mid - 40, 2)
+        else:
+            stop = round(mid + 40, 2)
+        risk = abs(mid - stop)
+
+    targets = calculate_targets(mid, stop, bias)
+    return {
+        "pair": "XAUUSD",
+        "direction": direction,
+        "entry_zone": f"{el}-{eh}",
+        "stop_loss": str(stop),
+        "tp1": str(targets["tp1"]),
+        "tp2": str(targets["tp2"]),
+        "tp3": str(targets["tp3"]),
+    }
+
+def generate_signal():
+    """High-quality PA when confirmation is present."""
+    if signals_posted_today() >= MAX_SIGNALS_PER_DAY or NEWS_BLACKOUT or not is_session_active():
         return None
 
     data = get_multi_timeframe_data()
@@ -79,7 +129,6 @@ def generate_signal():
         print("PA: no quality HTF bias")
         return None
 
-    # Quality confirmation only: engulfing or pin (not weak impulse alone)
     confirmation = None
     for name, df in [("15m", m15), ("5m", m5)]:
         if df is None or df.empty:
@@ -92,7 +141,6 @@ def generate_signal():
             confirmation = f"{name} {engulf or pin}"
             break
 
-    # Strong body only if also with HTF and decent size
     if not confirmation and len(m15) >= 2:
         c = m15.iloc[-1]
         body = float(c["close"] - c["open"])
@@ -112,74 +160,73 @@ def generate_signal():
         structure = float(m15["low"].tail(25).min()) if bias == "bullish" else float(m15["high"].tail(25).max())
 
     price = float(m15["close"].iloc[-1])
-
-    # Prefer entry zone toward structure (limit-style pullback area)
-    if bias == "bullish":
-        zone_mid = (price + structure) / 2 if structure < price else price
-        el = round(min(structure + 2, zone_mid - 1), 2)
-        eh = round(price + 0.5, 2)
-        if el > eh:
-            el, eh = round(price - 2, 2), round(price + 0.5, 2)
-        stop = round(structure - XAU_SL_BUFFER, 2)
-        if stop >= el:
-            stop = round(el - XAU_SL_BUFFER, 2)
-        direction = "BUY"
-    else:
-        zone_mid = (price + structure) / 2 if structure > price else price
-        el = round(price - 0.5, 2)
-        eh = round(max(structure - 2, zone_mid + 1), 2)
-        if el > eh:
-            el, eh = round(price - 0.5, 2), round(price + 2, 2)
-        stop = round(structure + XAU_SL_BUFFER, 2)
-        if stop <= eh:
-            stop = round(eh + XAU_SL_BUFFER, 2)
-        direction = "SELL"
-
-    mid = (el + eh) / 2
-    risk = abs(mid - stop)
-    if risk < 8 or risk > 80:
-        print(f"PA: risk out of band {risk:.1f}")
+    sig = _build_levels(bias, price, structure)
+    if not sig:
+        return None
+    if abs(float(sig["tp3"]) - (sum(map(float, sig["entry_zone"].split("-"))) / 2)) / abs(float(sig["stop_loss"]) - (sum(map(float, sig["entry_zone"].split("-"))) / 2)) < MIN_RR_TP1:
         return None
 
-    targets = calculate_targets(mid, stop, bias)
-    if abs(float(targets["tp3"]) - mid) / risk < MIN_RR_TP1:
+    sig["label"] = "Quality PA"
+    print(f"QUALITY PA {sig['direction']} {src} conf={confirmation}")
+    return sig
+
+def generate_daily_must():
+    """
+    At least one signal per trading day.
+    Fires once if nothing posted yet, from late London (~11 UTC) through NY.
+    Uses HTF lean + structure — not random noise.
+    """
+    if not is_weekday() or NEWS_BLACKOUT:
+        return None
+    if signals_posted_today() >= 1:
         return None
 
-    print(f"QUALITY PA {direction} {src} conf={confirmation}")
-
-    return {
-        "pair": "XAUUSD",
-        "direction": direction,
-        "entry_zone": f"{el}-{eh}",
-        "stop_loss": str(stop),
-        "tp1": str(targets["tp1"]),
-        "tp2": str(targets["tp2"]),
-        "tp3": str(targets["tp3"]),
-    }
-
-def _morning_daily_note():
-    global _daily_ping_date
-    today = datetime.now(timezone.utc).date()
-    if _daily_ping_date == today:
-        return
     hour = datetime.now(timezone.utc).hour
-    if hour < 7 or hour > 10:
-        return
-    msg = (
-        "☀️ QUALITY MODE\n"
-        "⚡ Daily PA — clean HTF + confirmation\n"
-        "🔥 Momentum — strong moves only\n"
-        "🥇🥈 Event trains on news"
-    )
-    if send_message(msg):
-        _daily_ping_date = today
+    # Wait for some London structure, then ensure a signal by end of NY
+    if hour < 11 or hour >= 21:
+        print("Daily must: waiting for 11–21 UTC window")
+        return None
+
+    # Once-per-day key in sent state
+    today = datetime.now(timezone.utc).date().isoformat()
+    k = f"DAILY_MUST:{today}"
+    sent = load_sent()
+    if k in sent:
+        return None
+
+    data = get_multi_timeframe_data()
+    d1, h4, m15 = data.get("1d"), data.get("4h"), data.get("15m")
+    if any(x is None or x.empty for x in [d1, h4, m15]):
+        return None
+
+    bias, src = _htf_bias_any(d1, h4, m15)
+    if not bias:
+        # Last resort: close vs open of last 8 H4 bars
+        last = h4.tail(8)
+        net = float(last["close"].iloc[-1] - last["open"].iloc[0])
+        if abs(net) < 8:
+            print("Daily must: no lean")
+            return None
+        bias = "bullish" if net > 0 else "bearish"
+        src = "H4 net"
+
+    structure = find_nearby_structure_level(m15, bias)
+    if structure is None:
+        structure = float(m15["low"].tail(30).min()) if bias == "bullish" else float(m15["high"].tail(30).max())
+
+    price = float(m15["close"].iloc[-1])
+    sig = _build_levels(bias, price, structure)
+    if not sig:
+        return None
+
+    sig["label"] = "Daily lean"
+    sig["_state_key"] = k
+    print(f"DAILY MUST {sig['direction']} {src}")
+    return sig
 
 def run_once():
     print(f"\n=== Run @ {datetime.now(timezone.utc).isoformat()} ===")
-    try:
-        _morning_daily_note()
-    except Exception as e:
-        print("daily note", e)
+    print("Signals already today:", signals_posted_today())
 
     if run_event_cycle:
         try:
@@ -187,20 +234,31 @@ def run_once():
         except Exception as e:
             print("Event error:", e)
 
+    mom_ok = False
     if run_momentum:
         try:
-            run_momentum()
+            mom_ok = bool(run_momentum())
+            if mom_ok:
+                mark_signal_posted()
         except Exception as e:
             print("Momentum error:", e)
 
     signal = generate_signal()
     if signal is None:
-        print("No quality PA this cycle")
+        signal = generate_daily_must()
+
+    if signal is None:
+        print("No PA / daily must this cycle")
         return
+
     if send_signal(signal):
-        global signals_today
-        signals_today += 1
-        print("PA posted", signals_today)
+        mark_signal_posted()
+        k = signal.get("_state_key")
+        if k:
+            sent = load_sent()
+            sent.add(k)
+            save_sent(sent)
+        print("Posted", signal.get("label"), signal["direction"], "total today", signals_posted_today())
 
 if __name__ == "__main__":
     run_once()

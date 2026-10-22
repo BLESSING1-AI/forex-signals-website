@@ -1,4 +1,4 @@
-"""Telegram — quality labels"""
+"""Telegram — quality + daily lean labels"""
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
@@ -38,12 +38,14 @@ def send_message(text: str) -> bool:
 def format_signal(signal: dict) -> str:
     d = signal["direction"].upper()
     gold = "BUY GOLD" if d == "BUY" else "SELL GOLD"
+    label = signal.get("label") or "Quality PA"
+    tag = "Daily lean" if "lean" in label.lower() else "Quality PA"
     return (
         f"⚡ {gold}\n"
         f"In: {signal['entry_zone']}\n"
         f"SL: {signal['stop_loss']}\n"
         f"TP1: {signal['tp1']} | TP2: {signal['tp2']} | TP3: {signal['tp3']}\n"
-        f"Risk 1% · Quality PA"
+        f"Risk 1% · {tag}"
     )
 
 def send_signal(signal: dict) -> bool:
