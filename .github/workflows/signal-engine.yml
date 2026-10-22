@@ -5,6 +5,9 @@ on:
     - cron: "*/15 * * * 1-5"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   run-engine:
     runs-on: ubuntu-latest
@@ -15,7 +18,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: engine/.signal_state.json
-          # Unique key each run so cache can be written after updates
           key: signal-state-${{ github.run_id }}
           restore-keys: |
             signal-state-
@@ -37,4 +39,14 @@ jobs:
           TELEGRAM_CHANNEL_ID: "-1004499950812"
         run: python signal_engine.py
 
-      # Cache is saved automatically at job end for the unique key above
+      - name: Commit website signals.json
+        run: |
+          git config user.name "signal-engine"
+          git config user.email "signal-engine@users.noreply.github.com"
+          git add signals.json public/signals.json || true
+          if git diff --staged --quiet; then
+            echo "No website signal changes"
+          else
+            git commit -m "chore: update website signals [skip ci]"
+            git push
+          fi

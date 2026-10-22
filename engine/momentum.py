@@ -2,7 +2,7 @@
 Scored momentum for all configured symbols (XAUUSD, BTCUSD, …).
 """
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 from data_fetcher import get_multi_timeframe_data
 from scoring import score_setup
@@ -22,18 +22,19 @@ from config import (
     NEWS_BLACKOUT,
 )
 
+try:
+    from signals_writer import record_signal
+except Exception:
+    record_signal = None
+
 
 def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     if NEWS_BLACKOUT:
         return None
-    # Crypto can run weekends; gold skip Sat/Sun
     wd = datetime.now(timezone.utc).weekday()
     meta = SYMBOLS.get(symbol, {})
     if meta.get("session_mode") == "fx" and wd >= 5:
         return None
-    if meta.get("session_mode") == "crypto" and wd == 5:
-        # optional: allow BTC Sat; skip pure dead Sat if desired — allow
-        pass
 
     max_daily = int(meta.get("max_daily", 3))
     if signals_posted_today(symbol) >= max_daily:
@@ -65,7 +66,6 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
 
 def run_momentum() -> bool:
-    """Scan all symbols; post first trade signal found; watchlists can post multiple."""
     any_trade = False
     for symbol in SYMBOLS.keys():
         try:
@@ -79,6 +79,11 @@ def run_momentum() -> bool:
         if setup.get("action") == "watchlist":
             if send_watchlist(setup):
                 mark_fingerprint(setup)
+                if record_signal:
+                    try:
+                        record_signal(setup, watchlist=True)
+                    except Exception as e:
+                        print("writer", e)
             continue
 
         if setup.get("action") != "signal" or setup["score"] < MIN_SIGNAL_SCORE:
@@ -88,7 +93,11 @@ def run_momentum() -> bool:
             mark_signal_posted(symbol)
             mark_cooldown(symbol)
             mark_fingerprint(setup)
+            if record_signal:
+                try:
+                    record_signal(setup, watchlist=False)
+                except Exception as e:
+                    print("writer", e)
             print(f"{symbol} trade posted score={setup['score']}")
             any_trade = True
-            # continue scanning other symbols same cycle
     return any_trade
