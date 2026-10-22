@@ -1,7 +1,13 @@
 {
   "lastUpdated": null,
-  "mode": "strict",
-  "pairs": ["XAUUSD"],
-  "maxSignalsPerDay": 2,
-  "signals": []
+  "mode": "scored",
+  "pairs": ["XAUUSD", "BTCUSD"],
+  "maxSignalsPerDay": {
+    "XAUUSD": 3,
+    "BTCUSD": 3
+  },
+  "telegram": "https://t.me/PriceActionSignalsHub",
+  "signals": [],
+  "watchlist": [],
+  "events": []
 }
