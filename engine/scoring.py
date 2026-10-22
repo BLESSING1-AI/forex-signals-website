@@ -1,6 +1,5 @@
 """
-Weighted setup quality score 0–100.
-Flexible combinations — not all confirmations required.
+Weighted setup quality score 0–100 — symbol-aware (XAU / BTC).
 """
 from typing import Dict, Any, Optional, List
 import pandas as pd
@@ -17,11 +16,11 @@ from structure import (
     find_nearby_structure_level,
 )
 from config import (
+    SYMBOLS,
     MIN_SIGNAL_SCORE,
     WATCHLIST_SCORE,
     A_PLUS_SCORE,
     MIN_RR,
-    XAU_SL_BUFFER,
     LONDON_START,
     LONDON_END,
     NY_START,
@@ -31,8 +30,13 @@ from config import (
 from datetime import datetime, timezone
 
 
-def _session_points() -> int:
+def _session_points(mode: str) -> int:
     h = datetime.now(timezone.utc).hour
+    if mode == "crypto":
+        # Crypto trades 24/7; slight preference for US/EU active hours
+        if (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END):
+            return 5
+        return 3
     if (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END):
         return 5
     if 6 <= h <= 21:
@@ -46,7 +50,21 @@ def score_setup(
     m15: pd.DataFrame,
     m5: Optional[pd.DataFrame] = None,
     news_bonus: int = 0,
+    symbol: str = "XAUUSD",
 ) -> Optional[Dict[str, Any]]:
+    meta = SYMBOLS.get(symbol) or SYMBOLS["XAUUSD"]
+    sl_buffer = float(meta["sl_buffer"])
+    disp_strong = float(meta["disp_strong"])
+    disp_solid = float(meta["disp_solid"])
+    disp_ok = float(meta["disp_ok"])
+    disp_vote = float(meta["disp_vote"])
+    risk_min = float(meta["risk_min"])
+    risk_max = float(meta["risk_max"])
+    vol_abs_strong = float(meta["vol_abs_strong"])
+    vol_abs_mid = float(meta["vol_abs_mid"])
+    decimals = int(meta.get("decimals", 2))
+    session_mode = meta.get("session_mode", "fx")
+
     if m15 is None or m15.empty or h4 is None or h4.empty:
         return None
 
@@ -79,17 +97,17 @@ def score_setup(
     ]:
         if sig in ("bullish", "bearish"):
             votes[sig] += w
-    if net5 >= 8:
+    if net5 >= disp_vote:
         votes["bullish"] += 3
-    if net5 <= -8:
+    if net5 <= -disp_vote:
         votes["bearish"] += 3
-    if abs(net8) >= 20:
+    if abs(net8) >= disp_solid * 1.5:
         votes["bullish" if net8 > 0 else "bearish"] += 2
     if fvg and fvg["direction"] in votes:
         votes[fvg["direction"]] += 1
 
     if votes["bullish"] == votes["bearish"]:
-        if abs(net5) < 5:
+        if abs(net5) < disp_ok * 0.8:
             return None
         direction = "bullish" if net5 > 0 else "bearish"
     else:
@@ -99,7 +117,6 @@ def score_setup(
     reasons: List[str] = []
     score = 0
 
-    # Structure 20
     struct_pts = 0
     if bos == direction:
         struct_pts += 12
@@ -113,30 +130,28 @@ def score_setup(
     if m15_bias == direction:
         struct_pts += 4
     signed_pre = net5 if direction == "bullish" else -net5
-    if struct_pts < 10 and signed_pre >= 10:
+    if struct_pts < 10 and signed_pre >= disp_ok:
         struct_pts = max(struct_pts, 10)
         if "Impulse structure" not in reasons:
             reasons.append("Impulse structure")
     struct_pts = min(20, struct_pts)
     score += struct_pts
 
-    # Momentum 20
     mom_pts = 0
     signed = net5 if direction == "bullish" else -net5
-    if signed >= 22 or abs(net8) >= 30:
+    if signed >= disp_strong or abs(net8) >= disp_strong * 1.2:
         mom_pts = 20
         reasons.append("Strong displacement")
-    elif signed >= 12:
+    elif signed >= disp_solid:
         mom_pts = 16
         reasons.append("Solid momentum")
-    elif signed >= 6:
+    elif signed >= disp_ok:
         mom_pts = 10
         reasons.append("Directional momentum")
-    elif signed >= 3:
+    elif signed >= disp_ok * 0.5:
         mom_pts = 5
     score += mom_pts
 
-    # HTF 15 — bonus, not hard gate
     htf_pts = 0
     if h4_bias == direction and d1_bias == direction:
         htf_pts = 15
@@ -151,11 +166,9 @@ def score_setup(
         htf_pts = 0
         reasons.append("HTF opposing (score reduced)")
     else:
-        # neutral HTF: partial credit if LTF momentum is strong
         htf_pts = 8 if mom_pts >= 16 else 4
     score += htf_pts
 
-    # Liquidity 10
     liq_pts = 0
     if sweep == direction:
         liq_pts = 10
@@ -164,7 +177,6 @@ def score_setup(
         liq_pts = 2
     score += liq_pts
 
-    # FVG 10
     fvg_pts = 0
     fvg_ok = False
     if fvg and fvg["direction"] == direction:
@@ -175,23 +187,21 @@ def score_setup(
         fvg_pts = 2
     score += fvg_pts
 
-    # Vol 10 — relative + absolute gold ranges
     vol_pts = 0
     avg_rng = float((m15["high"] - m15["low"]).tail(20).mean()) or 1
-    if rng5 >= avg_rng * 2.0 or rng5 >= 20:
+    if rng5 >= avg_rng * 2.0 or rng5 >= vol_abs_strong:
         vol_pts = 10
         reasons.append("Range expansion")
-    elif rng5 >= avg_rng * 1.3 or rng5 >= 12:
+    elif rng5 >= avg_rng * 1.3 or rng5 >= vol_abs_mid:
         vol_pts = 7
-    elif rng5 >= avg_rng or rng5 >= 6:
+    elif rng5 >= avg_rng or rng5 >= vol_abs_mid * 0.4:
         vol_pts = 4
     score += vol_pts
 
-    # Session 5
-    sess = _session_points()
+    sess = _session_points(session_mode)
     score += sess
     if sess >= 5:
-        reasons.append("London/NY session")
+        reasons.append("Active session")
 
     structure = find_nearby_structure_level(m15, direction)
     if structure is None:
@@ -201,34 +211,36 @@ def score_setup(
             else float(m15["high"].tail(20).max())
         )
 
+    # entry / SL scaled per symbol
+    tick = max(price * 0.00005, 0.5) if symbol == "BTCUSD" else 0.5
     if direction == "bullish":
-        el = round(min(structure + 1, price - 1.2), 2)
-        eh = round(price + 0.6, 2)
+        el = round(min(structure + tick, price - tick * 2), decimals)
+        eh = round(price + tick, decimals)
         if el > eh:
-            el, eh = round(price - 2, 2), round(price + 0.5, 2)
-        stop = round(min(structure, el) - XAU_SL_BUFFER, 2)
+            el, eh = round(price - tick * 3, decimals), round(price + tick, decimals)
+        stop = round(min(structure, el) - sl_buffer, decimals)
         if stop >= el:
-            stop = round(el - XAU_SL_BUFFER, 2)
+            stop = round(el - sl_buffer, decimals)
     else:
-        el = round(price - 0.6, 2)
-        eh = round(max(structure - 1, price + 1.2), 2)
+        el = round(price - tick, decimals)
+        eh = round(max(structure - tick, price + tick * 2), decimals)
         if el > eh:
-            el, eh = round(price - 0.5, 2), round(price + 2, 2)
-        stop = round(max(structure, eh) + XAU_SL_BUFFER, 2)
+            el, eh = round(price - tick, decimals), round(price + tick * 3, decimals)
+        stop = round(max(structure, eh) + sl_buffer, decimals)
         if stop <= eh:
-            stop = round(eh + XAU_SL_BUFFER, 2)
+            stop = round(eh + sl_buffer, decimals)
 
     mid = (el + eh) / 2.0
     risk = abs(mid - stop)
-    if risk < 6:
+    if risk < risk_min:
         return None
-    if risk > 90:
-        stop = round(mid - 40, 2) if direction == "bullish" else round(mid + 40, 2)
+    if risk > risk_max:
+        stop = round(mid - risk_max * 0.45, decimals) if direction == "bullish" else round(mid + risk_max * 0.45, decimals)
         risk = abs(mid - stop)
 
-    tp1 = round(mid + risk * 5.0, 2) if direction == "bullish" else round(mid - risk * 5.0, 2)
-    tp2 = round(mid + risk * 3.0, 2) if direction == "bullish" else round(mid - risk * 3.0, 2)
-    tp3 = round(mid + risk * max(MIN_RR, 1.8), 2) if direction == "bullish" else round(mid - risk * max(MIN_RR, 1.8), 2)
+    tp1 = round(mid + risk * 5.0, decimals) if direction == "bullish" else round(mid - risk * 5.0, decimals)
+    tp2 = round(mid + risk * 3.0, decimals) if direction == "bullish" else round(mid - risk * 3.0, decimals)
+    tp3 = round(mid + risk * max(MIN_RR, 1.8), decimals) if direction == "bullish" else round(mid - risk * max(MIN_RR, 1.8), decimals)
 
     rr = abs(tp3 - mid) / risk if risk else 0.0
     rr = round(rr, 2)
@@ -269,11 +281,11 @@ def score_setup(
         model = "liquidity_reversal"
     elif fvg_ok and mom_pts >= 10:
         model = "pullback_momentum"
-    elif mom_pts >= 15 and (bos or signed >= 12):
+    elif mom_pts >= 15 and (bos or signed >= disp_solid):
         model = "breakout_momentum"
 
     return {
-        "pair": "XAUUSD",
+        "pair": symbol,
         "direction": dir_label,
         "bias": direction,
         "score": score,
@@ -282,12 +294,12 @@ def score_setup(
         "model": model,
         "reasons": reasons,
         "entry_zone": f"{el}-{eh}",
-        "stop_loss": str(round(stop, 2)),
+        "stop_loss": str(stop),
         "tp1": str(tp1),
         "tp2": str(tp2),
         "tp3": str(tp3),
         "rr": rr,
-        "structure_level": round(float(structure), 2),
+        "structure_level": round(float(structure), decimals),
         "htf": h4_bias,
         "momentum_pts": mom_pts,
         "struct_pts": struct_pts,

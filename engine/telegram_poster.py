@@ -1,4 +1,4 @@
-"""Telegram — scored signal + watchlist formats"""
+"""Telegram — multi-symbol scored signals"""
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
@@ -40,6 +40,7 @@ def send_message(text: str) -> bool:
         return False
 
 def send_scored_signal(setup: dict) -> bool:
+    pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     tier = setup.get("tier", "A")
     score = setup.get("score", 0)
@@ -50,9 +51,9 @@ def send_scored_signal(setup: dict) -> bool:
     c = setup.get("confirmations") or {}
 
     lines = [
-        f"{icon} XAUUSD {d} — {tier} SETUP",
+        f"{icon} {pair} {d} — {tier} SETUP",
         f"📊 Score: {score}/100",
-        f"📈 Bias: {setup.get('bias', d).title() if isinstance(setup.get('bias'), str) else d}",
+        f"📈 Bias: {str(setup.get('bias', d)).title()}",
         f"⚡ Model: {setup.get('model', 'momentum')}",
         f"🏗 Structure: {'BOS' if c.get('bos') else '—'}",
         f"💧 Liquidity: {'Sweep' if c.get('sweep') else '—'}",
@@ -68,6 +69,7 @@ def send_scored_signal(setup: dict) -> bool:
     return send_message("\n".join(lines))
 
 def send_watchlist(setup: dict) -> bool:
+    pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     score = setup.get("score", 0)
     waiting = []
@@ -82,7 +84,7 @@ def send_watchlist(setup: dict) -> bool:
         waiting = ["Retest", "Strong continuation candle"]
 
     lines = [
-        f"👀 XAUUSD WATCHLIST",
+        f"👀 {pair} WATCHLIST",
         f"Developing {d} setup",
         f"Score: {score}/100",
         f"Waiting for:",
@@ -92,12 +94,11 @@ def send_watchlist(setup: dict) -> bool:
     lines.append("No entry yet.")
     return send_message("\n".join(lines))
 
-# Back-compat wrappers used by older paths
 def format_signal(signal: dict) -> str:
+    pair = signal.get("pair", "XAUUSD")
     d = signal["direction"].upper()
-    gold = "BUY GOLD" if d == "BUY" else "SELL GOLD"
     return (
-        f"⚡ {gold}\n"
+        f"⚡ {pair} {d}\n"
         f"In: {signal['entry_zone']}\n"
         f"SL: {signal['stop_loss']}\n"
         f"TP1: {signal['tp1']} | TP2: {signal['tp2']} | TP3: {signal['tp3']}\n"
@@ -107,10 +108,7 @@ def format_signal(signal: dict) -> str:
 def send_signal(signal: dict) -> bool:
     return send_message(format_signal(signal))
 
-def format_momentum(signal: dict) -> str:
-    return format_signal(signal)
-
 def send_momentum(signal: dict) -> bool:
     if "score" in signal:
         return send_scored_signal(signal)
-    return send_message(format_momentum(signal))
+    return send_message(format_signal(signal))

@@ -1,10 +1,8 @@
 """
-Scored momentum engine — flexible confirmation combinations.
-Tiers: A+ / A send trade; WATCHLIST alert only; below 68 skip.
-News engine stays separate (event_engine).
+Scored momentum for all configured symbols (XAUUSD, BTCUSD, …).
 """
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from data_fetcher import get_multi_timeframe_data
 from scoring import score_setup
@@ -18,72 +16,79 @@ from state_store import (
     mark_fingerprint,
 )
 from config import (
-    MAX_DAILY_SIGNALS_XAU,
+    SYMBOLS,
     SIGNAL_COOLDOWN_MINUTES,
     MIN_SIGNAL_SCORE,
-    WATCHLIST_SCORE,
     NEWS_BLACKOUT,
 )
 
 
-def generate_momentum() -> Optional[Dict[str, Any]]:
+def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     if NEWS_BLACKOUT:
         return None
-    if datetime.now(timezone.utc).weekday() >= 5:
+    # Crypto can run weekends; gold skip Sat/Sun
+    wd = datetime.now(timezone.utc).weekday()
+    meta = SYMBOLS.get(symbol, {})
+    if meta.get("session_mode") == "fx" and wd >= 5:
         return None
+    if meta.get("session_mode") == "crypto" and wd == 5:
+        # optional: allow BTC Sat; skip pure dead Sat if desired — allow
+        pass
 
-    symbol = "XAUUSD"
-    if signals_posted_today(symbol) >= MAX_DAILY_SIGNALS_XAU:
-        print("Momentum: daily limit reached")
+    max_daily = int(meta.get("max_daily", 3))
+    if signals_posted_today(symbol) >= max_daily:
+        print(f"{symbol}: daily limit reached")
         return None
     if not cooldown_ok(symbol, SIGNAL_COOLDOWN_MINUTES):
-        print("Momentum: cooldown active")
+        print(f"{symbol}: cooldown active")
         return None
 
-    data = get_multi_timeframe_data()
+    data = get_multi_timeframe_data(symbol)
     d1, h4, m15, m5 = data.get("1d"), data.get("4h"), data.get("15m"), data.get("5m")
     if any(x is None or (hasattr(x, "empty") and x.empty) for x in [h4, m15]):
         return None
 
-    setup = score_setup(d1, h4, m15, m5, news_bonus=0)
+    setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol)
     if not setup:
-        print("Momentum: score below threshold / no lean")
+        print(f"{symbol}: score below threshold / no lean")
         return None
 
     if is_duplicate(setup):
-        print("Momentum: duplicate fingerprint")
+        print(f"{symbol}: duplicate fingerprint")
         return None
 
     print(
-        f"SCORED {setup['tier']} {setup['direction']} score={setup['score']} "
-        f"model={setup['model']} RR={setup['rr']}"
+        f"SCORED {symbol} {setup['tier']} {setup['direction']} "
+        f"score={setup['score']} model={setup['model']} RR={setup['rr']}"
     )
     return setup
 
 
 def run_momentum() -> bool:
-    setup = generate_momentum()
-    if not setup:
-        return False
+    """Scan all symbols; post first trade signal found; watchlists can post multiple."""
+    any_trade = False
+    for symbol in SYMBOLS.keys():
+        try:
+            setup = generate_for_symbol(symbol)
+        except Exception as e:
+            print(f"{symbol} momentum error:", e)
+            continue
+        if not setup:
+            continue
 
-    action = setup.get("action")
-    if action == "watchlist":
-        ok = send_watchlist(setup)
-        if ok:
-            mark_fingerprint(setup)  # avoid spam watchlist same zone
-        return False  # does not count as full trade signal
+        if setup.get("action") == "watchlist":
+            if send_watchlist(setup):
+                mark_fingerprint(setup)
+            continue
 
-    if action != "signal":
-        return False
+        if setup.get("action") != "signal" or setup["score"] < MIN_SIGNAL_SCORE:
+            continue
 
-    if setup["score"] < MIN_SIGNAL_SCORE:
-        return False
-
-    ok = send_scored_signal(setup)
-    if ok:
-        mark_signal_posted("XAUUSD")
-        mark_cooldown("XAUUSD")
-        mark_fingerprint(setup)
-        print(f"Momentum trade posted score={setup['score']}")
-        return True
-    return False
+        if send_scored_signal(setup):
+            mark_signal_posted(symbol)
+            mark_cooldown(symbol)
+            mark_fingerprint(setup)
+            print(f"{symbol} trade posted score={setup['score']}")
+            any_trade = True
+            # continue scanning other symbols same cycle
+    return any_trade
