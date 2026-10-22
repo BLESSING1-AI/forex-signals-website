@@ -1,4 +1,4 @@
-"""Telegram — quality + daily lean labels"""
+"""Telegram — scored signal + watchlist formats"""
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
@@ -26,7 +26,11 @@ def send_message(text: str) -> bool:
         if chat != CHANNEL_FALLBACK:
             r2 = requests.post(
                 url,
-                json={"chat_id": CHANNEL_FALLBACK, "text": text.strip(), "disable_web_page_preview": True},
+                json={
+                    "chat_id": CHANNEL_FALLBACK,
+                    "text": text.strip(),
+                    "disable_web_page_preview": True,
+                },
                 timeout=15,
             )
             return r2.json().get("ok", False)
@@ -35,32 +39,78 @@ def send_message(text: str) -> bool:
         print("Send failed:", e)
         return False
 
+def send_scored_signal(setup: dict) -> bool:
+    d = setup["direction"]
+    tier = setup.get("tier", "A")
+    score = setup.get("score", 0)
+    icon = "🔥" if tier == "A+" else "🟢"
+    conf = "HIGH" if score >= 85 else "GOOD"
+    reasons = setup.get("reasons") or []
+    reason_txt = "; ".join(reasons[:5]) if reasons else setup.get("model", "")
+    c = setup.get("confirmations") or {}
+
+    lines = [
+        f"{icon} XAUUSD {d} — {tier} SETUP",
+        f"📊 Score: {score}/100",
+        f"📈 Bias: {setup.get('bias', d).title() if isinstance(setup.get('bias'), str) else d}",
+        f"⚡ Model: {setup.get('model', 'momentum')}",
+        f"🏗 Structure: {'BOS' if c.get('bos') else '—'}",
+        f"💧 Liquidity: {'Sweep' if c.get('sweep') else '—'}",
+        f"🧩 FVG: {'Yes' if c.get('fvg') else '—'}",
+        f"📍 Entry: {setup['entry_zone']}",
+        f"🛑 SL: {setup['stop_loss']}",
+        f"🎯 TP1: {setup['tp1']} | TP2: {setup['tp2']} | TP3: {setup['tp3']}",
+        f"📐 RR: 1:{setup.get('rr', '—')}",
+        f"🔥 Confidence: {conf}",
+        f"Risk 1%",
+        f"Reason: {reason_txt}",
+    ]
+    return send_message("\n".join(lines))
+
+def send_watchlist(setup: dict) -> bool:
+    d = setup["direction"]
+    score = setup.get("score", 0)
+    waiting = []
+    c = setup.get("confirmations") or {}
+    if not c.get("bos"):
+        waiting.append("BOS confirmation")
+    if not c.get("fvg"):
+        waiting.append("FVG / cleaner zone")
+    if setup.get("momentum_pts", 0) < 15:
+        waiting.append("Stronger continuation")
+    if not waiting:
+        waiting = ["Retest", "Strong continuation candle"]
+
+    lines = [
+        f"👀 XAUUSD WATCHLIST",
+        f"Developing {d} setup",
+        f"Score: {score}/100",
+        f"Waiting for:",
+    ]
+    for w in waiting[:4]:
+        lines.append(f"• {w}")
+    lines.append("No entry yet.")
+    return send_message("\n".join(lines))
+
+# Back-compat wrappers used by older paths
 def format_signal(signal: dict) -> str:
     d = signal["direction"].upper()
     gold = "BUY GOLD" if d == "BUY" else "SELL GOLD"
-    label = signal.get("label") or "Quality PA"
-    tag = "Daily lean" if "lean" in label.lower() else "Quality PA"
     return (
         f"⚡ {gold}\n"
         f"In: {signal['entry_zone']}\n"
         f"SL: {signal['stop_loss']}\n"
         f"TP1: {signal['tp1']} | TP2: {signal['tp2']} | TP3: {signal['tp3']}\n"
-        f"Risk 1% · {tag}"
+        f"Risk 1%"
     )
 
 def send_signal(signal: dict) -> bool:
     return send_message(format_signal(signal))
 
 def format_momentum(signal: dict) -> str:
-    d = signal["direction"].upper()
-    gold = "BUY GOLD" if d == "BUY" else "SELL GOLD"
-    return (
-        f"🔥 MOMENTUM {gold}\n"
-        f"In: {signal['entry_zone']}\n"
-        f"SL: {signal['stop_loss']}\n"
-        f"TP1: {signal['tp1']} | TP2: {signal['tp2']}\n"
-        f"Risk 0.75% · strong move only"
-    )
+    return format_signal(signal)
 
 def send_momentum(signal: dict) -> bool:
+    if "score" in signal:
+        return send_scored_signal(signal)
     return send_message(format_momentum(signal))
