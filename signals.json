@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-23T14:27:16.525354+00:00",
+  "lastUpdated": "2026-10-26T08:07:21.784595+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -34,6 +34,28 @@
       "postedAt": "2026-10-23T14:27:16.525349+00:00"
     }
   ],
-  "watchlist": [],
+  "watchlist": [
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "tier": "WATCHLIST",
+      "score": 72,
+      "model": "pullback_momentum",
+      "entry_zone": "79716.29-80110.59",
+      "stop_loss": "80264.58",
+      "tp1": "78157.74",
+      "tp2": "78860.02",
+      "tp3": "79281.39",
+      "rr": 1.8,
+      "reasons": [
+        "BOS confirmed",
+        "Solid momentum",
+        "H4 alignment",
+        "FVG valid",
+        "Active session"
+      ],
+      "postedAt": "2026-10-26T08:07:21.784592+00:00"
+    }
+  ],
   "events": []
 }
