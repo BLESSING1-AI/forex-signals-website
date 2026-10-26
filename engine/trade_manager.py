@@ -1,11 +1,9 @@
 """
-Trade lifecycle: TP hits, BE, SL, invalidation.
-Persists open trades in state + website stats.
+Trade lifecycle: closest TP first → BE, then mid/far TPs, SL, close.
+TP labels on signals: TP1 furthest / TP3 closest — management uses distance order.
 """
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
-import json
-import os
 
 from data_fetcher import fetch_ohlc
 from telegram_poster import send_message
@@ -38,9 +36,9 @@ def register_open_trade(setup: Dict[str, Any]) -> None:
         "entry_zone": setup.get("entry_zone"),
         "sl": float(setup.get("stop_loss", 0)),
         "original_sl": float(setup.get("stop_loss", 0)),
-        "tp1": float(setup.get("tp1", 0)),
+        "tp1": float(setup.get("tp1", 0)),  # furthest
         "tp2": float(setup.get("tp2", 0)),
-        "tp3": float(setup.get("tp3", 0)),
+        "tp3": float(setup.get("tp3", 0)),  # closest
         "tp1_hit": False,
         "tp2_hit": False,
         "tp3_hit": False,
@@ -75,6 +73,12 @@ def _r_multiple(trade: Dict, exit_px: float) -> float:
     return round((trade["entry"] - exit_px) / risk, 2)
 
 
+def _hit(direction: str, price: float, level: float) -> bool:
+    if direction == "BUY":
+        return price >= level
+    return price <= level
+
+
 def manage_open_trades() -> List[str]:
     data = _load_raw()
     opens = data.get("open_trades") or []
@@ -95,18 +99,14 @@ def manage_open_trades() -> List[str]:
             continue
 
         d = t["direction"]
+        # SL / BE exit
         hit_sl = price <= t["sl"] if d == "BUY" else price >= t["sl"]
-        hit_tp1 = (not t.get("tp1_hit")) and (price >= t["tp1"] if d == "BUY" else price <= t["tp1"])
-        hit_tp2 = (not t.get("tp2_hit")) and (price >= t["tp2"] if d == "BUY" else price <= t["tp2"])
-        hit_tp3 = (not t.get("tp3_hit")) and (price >= t["tp3"] if d == "BUY" else price <= t["tp3"])
-
-        # SL first (unless BE already and we're treating as protected)
         if hit_sl:
             r = _r_multiple(t, t["sl"])
-            outcome = "BE" if t.get("be") and abs(r) < 0.15 else "SL"
+            outcome = "BE" if t.get("be") and abs(r) < 0.2 else "SL"
             msg = (
                 f"{'✅ BE EXIT' if outcome == 'BE' else '❌ SL HIT'} · {pair} {d}\n"
-                f"Price ~{price}\n"
+                f"Price ~{round(price, 2)}\n"
                 f"Result: {r}R · {outcome}"
             )
             send_message(msg)
@@ -124,50 +124,55 @@ def manage_open_trades() -> List[str]:
                     print("closed writer", e)
             continue
 
-        if hit_tp1:
-            t["tp1_hit"] = True
+        # Manage by proximity: TP3 (closest) → TP2 → TP1 (furthest)
+        # Closest first → BE
+        if not t.get("tp3_hit") and _hit(d, price, t["tp3"]):
+            t["tp3_hit"] = True
             t["be"] = True
-            t["sl"] = t["entry"]  # move to BE
+            t["sl"] = t["entry"]
             msg = (
-                f"🎯 TP1 HIT · {pair} {d}\n"
-                f"Price ~{price}\n"
-                f"Move SL → BE ({t['entry']})\n"
-                f"Leave runner for TP2/TP3"
+                f"🎯 TP3 (closest) HIT · {pair} {d}\n"
+                f"Price ~{round(price, 2)}\n"
+                f"Move SL → BE ({round(t['entry'], 2)})\n"
+                f"Runner on for TP2 / TP1"
             )
             send_message(msg)
-            events.append("TP1")
+            events.append("TP3")
             if record_trade_update:
                 try:
-                    record_trade_update(t, "TP1")
+                    record_trade_update(t, "TP3")
                 except Exception:
                     pass
 
-        if hit_tp2:
+        if not t.get("tp2_hit") and _hit(d, price, t["tp2"]):
             t["tp2_hit"] = True
+            if not t.get("be"):
+                t["be"] = True
+                t["sl"] = t["entry"]
             msg = (
                 f"🎯 TP2 HIT · {pair} {d}\n"
-                f"Price ~{price}\n"
-                f"Partial done · runner → TP3"
+                f"Price ~{round(price, 2)}\n"
+                f"Partial · runner → TP1 (final)"
             )
             send_message(msg)
             events.append("TP2")
 
-        if hit_tp3:
-            t["tp3_hit"] = True
-            r = _r_multiple(t, t["tp3"])
+        if not t.get("tp1_hit") and _hit(d, price, t["tp1"]):
+            t["tp1_hit"] = True
+            r = _r_multiple(t, t["tp1"])
             msg = (
-                f"🏆 TP3 HIT · {pair} {d}\n"
-                f"Price ~{price}\n"
-                f"Full target · ~{r}R"
+                f"🏆 TP1 (final) HIT · {pair} {d}\n"
+                f"Price ~{round(price, 2)}\n"
+                f"Full scale-out · ~{r}R"
             )
             send_message(msg)
             t["status"] = "closed"
             t["closed_at"] = datetime.now(timezone.utc).isoformat()
-            t["exit"] = t["tp3"]
+            t["exit"] = t["tp1"]
             t["result_r"] = r
-            t["outcome"] = "TP3"
+            t["outcome"] = "TP1"
             closed_log.append(t)
-            events.append("TP3")
+            events.append("TP1")
             if record_closed_trade:
                 try:
                     record_closed_trade(t)

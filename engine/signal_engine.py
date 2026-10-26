@@ -1,7 +1,12 @@
-"""Main runner — lifecycle + news + momentum + stats."""
+"""Main runner — commands + lifecycle + news + momentum + stats."""
 from datetime import datetime, timezone
 from state_store import signals_posted_today
 from config import SYMBOLS
+
+try:
+    from bot_commands import process_commands
+except Exception:
+    process_commands = None
 
 try:
     from event_engine import run_event_cycle
@@ -30,7 +35,14 @@ def run_once():
     for sym in SYMBOLS:
         print(f"{sym} today:", signals_posted_today(sym))
 
-    # 1) Manage open trades (TP/SL/BE)
+    if process_commands:
+        try:
+            n = process_commands()
+            if n:
+                print("Commands handled:", n)
+        except Exception as e:
+            print("Commands error:", e)
+
     if manage_open_trades:
         try:
             ev = manage_open_trades()
@@ -39,14 +51,12 @@ def run_once():
         except Exception as e:
             print("Lifecycle error:", e)
 
-    # 2) News (gold/USD)
     if run_event_cycle:
         try:
             print("Events:", run_event_cycle())
         except Exception as e:
             print("Event error:", e)
 
-    # 3) New setups
     any_trade = False
     if run_momentum:
         try:
@@ -54,7 +64,6 @@ def run_once():
         except Exception as e:
             print("Momentum error:", e)
 
-    # 4) Quiet day + weekly stats
     if quiet_day_note:
         try:
             quiet_day_note(len(SYMBOLS), any_trade)

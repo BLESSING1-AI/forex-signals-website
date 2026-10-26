@@ -2,11 +2,172 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0; url=/" />
-  <title>Price Action Signals</title>
-  <script>location.replace('public/index.html')</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Price Action Signals – Gold · BTC · ETH</title>
+  <meta name="description" content="Scored price action signals for XAUUSD, BTCUSD, ETHUSD. Risk calculator, stats, educational only." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{gold:{400:'#fbbf24',500:'#f59e0b'},btc:{400:'#f7931a'},eth:{400:'#627eea'}}}}}</script>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');body{font-family:Inter,system-ui,sans-serif}</style>
 </head>
-<body class="bg-slate-950 text-white p-8">
-  <p>If not redirected, open <a class="text-amber-400" href="public/index.html">public/index.html</a> or your Vercel URL.</p>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+<nav class="border-b border-slate-800 sticky top-0 bg-slate-950/90 backdrop-blur z-50">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-400 to-amber-600 text-slate-900 font-bold text-sm flex items-center justify-center">PA</div>
+      <div><div class="font-semibold leading-tight">Price Action Signals</div><div class="text-xs text-slate-500">XAU · BTC · ETH</div></div>
+    </div>
+    <a href="https://t.me/PriceActionSignalsHub" class="text-sm px-3 py-1.5 rounded-lg bg-gold-500 text-slate-900 font-medium" target="_blank" rel="noopener">Telegram</a>
+  </div>
+</nav>
+
+<main class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+  <header class="text-center">
+    <p class="text-xs text-slate-500 mb-2">Scored A+/A · Min RR 1.8 · Lifecycle TP/BE/SL</p>
+    <h1 class="text-3xl font-bold">Signals for beginners — without the noise</h1>
+    <p class="text-slate-400 text-sm mt-2 max-w-lg mx-auto">Educational only. Not financial advice. Manage your own risk.</p>
+  </header>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4"><p class="text-xs text-slate-500">PAIRS</p><p id="stat-pairs" class="font-semibold text-gold-400">XAU · BTC · ETH</p></div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4"><p class="text-xs text-slate-500">ACTIVE</p><p id="stat-active" class="font-semibold">0</p></div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4"><p class="text-xs text-slate-500">WIN RATE</p><p id="stat-wr" class="font-semibold">—</p></div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4"><p class="text-xs text-slate-500">AVG R</p><p id="stat-ar" class="font-semibold">—</p></div>
+  </div>
+
+  <!-- Risk calculator -->
+  <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+    <h2 class="font-semibold">Risk calculator (1% default)</h2>
+    <div class="grid sm:grid-cols-4 gap-3 text-sm">
+      <label class="block">Account ($)
+        <input id="rc-balance" type="number" value="1000" class="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2" />
+      </label>
+      <label class="block">Risk %
+        <input id="rc-risk" type="number" value="1" step="0.1" class="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2" />
+      </label>
+      <label class="block">Entry
+        <input id="rc-entry" type="number" value="2650" step="0.01" class="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2" />
+      </label>
+      <label class="block">Stop loss
+        <input id="rc-sl" type="number" value="2630" step="0.01" class="mt-1 w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2" />
+      </label>
+    </div>
+    <p id="rc-out" class="text-sm text-gold-400 font-medium">Risk $10 · Stop distance 20 · Position units ≈ 0.50</p>
+    <p class="text-xs text-slate-500">Units = risk$ / |entry−SL|. Broker lot size may differ for gold/crypto — adjust to your platform.</p>
+  </section>
+
+  <div class="flex flex-wrap gap-2 items-center justify-between" id="signals">
+    <h2 class="text-lg font-semibold">Active setups</h2>
+    <div class="flex flex-wrap gap-2 text-sm" id="filters">
+      <button data-filter="ALL" class="filter-btn px-3 py-1.5 rounded-lg bg-gold-500 text-slate-900 font-medium">All</button>
+      <button data-filter="XAUUSD" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-800">XAU</button>
+      <button data-filter="BTCUSD" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-800">BTC</button>
+      <button data-filter="ETHUSD" class="filter-btn px-3 py-1.5 rounded-lg bg-slate-800">ETH</button>
+    </div>
+  </div>
+  <div id="signal-list" class="space-y-4"><p class="text-slate-500 text-sm">Loading…</p></div>
+
+  <section>
+    <h2 class="text-lg font-semibold mb-3">Recent results</h2>
+    <div id="closed-list" class="space-y-2 text-sm text-slate-400">No closed trades yet.</div>
+  </section>
+
+  <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-sm space-y-2">
+    <h2 class="font-semibold">How it works</h2>
+    <p>🔥 A+ (85+) · 🟢 A (75–84) · 👀 Watchlist (68–74)</p>
+    <p>TP3 closest → move SL to BE · TP2 · TP1 final target</p>
+    <p>Telegram: /status · /last · /stats</p>
+    <p class="text-slate-500">EURUSD/GBPUSD deferred (no Coinbase FX candles). News trains remain gold/USD focused.</p>
+  </section>
+</main>
+
+<script>
+let allSignals = [], currentFilter = 'ALL';
+
+function pairColor(p){return p==='BTCUSD'?'text-btc-400':p==='ETHUSD'?'text-eth-400':'text-gold-400'}
+function tierBadge(t){
+  if(t==='A+')return '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">A+</span>';
+  if(t==='A')return '<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">A</span>';
+  return '<span class="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">Watchlist</span>';
+}
+function dirBadge(d){d=(d||'').toUpperCase();return d==='BUY'?'<span class="text-emerald-400 font-semibold">BUY</span>':'<span class="text-rose-400 font-semibold">SELL</span>'}
+
+function card(s){
+  const pair=s.pair||'XAUUSD';
+  const tier=s.tier||(s.action==='watchlist'?'WATCHLIST':'A');
+  const ctx=(s.reasons&&s.reasons.join?s.reasons.join(' · '):s.invalidation)||'';
+  return `<article class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+    <div class="flex flex-wrap justify-between gap-2 mb-3">
+      <div class="flex items-center gap-2 flex-wrap"><span class="font-bold ${pairColor(pair)}">${pair}</span>${dirBadge(s.direction)}${tierBadge(tier)}</div>
+      <span class="text-xs text-slate-500">Score ${s.score??'—'}/100</span>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-3 text-sm">
+      <div class="space-y-1">
+        <div class="flex justify-between"><span class="text-slate-500">Entry</span><span>${s.entry_zone||'—'}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">SL</span><span class="text-rose-300">${s.stop_loss||'—'}</span></div>
+        ${s.rr!=null?`<div class="flex justify-between"><span class="text-slate-500">RR</span><span>1:${s.rr}</span></div>`:''}
+      </div>
+      <div class="space-y-1">
+        <div class="flex justify-between"><span class="text-slate-500">TP1</span><span class="text-emerald-300">${s.tp1||'—'}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">TP2</span><span>${s.tp2||'—'}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">TP3</span><span>${s.tp3||'—'}</span></div>
+      </div>
+    </div>
+    ${s.invalidation?`<p class="text-xs text-amber-500/90 mt-3">Invalid: ${s.invalidation}</p>`:''}
+    ${ctx&&!s.invalidation?`<p class="text-xs text-slate-500 mt-3">${ctx}</p>`:''}
+    <p class="text-xs text-slate-600 mt-2">Risk 1% · After closest TP → BE</p>
+  </article>`;
+}
+
+function render(){
+  const list=document.getElementById('signal-list');
+  let items=allSignals.filter(s=>currentFilter==='ALL'||(s.pair||'XAUUSD')===currentFilter);
+  if(!items.length){list.innerHTML='<div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-500">No active setups. Live alerts on Telegram.</div>';return;}
+  list.innerHTML=items.map(card).join('');
+}
+
+document.getElementById('filters').onclick=e=>{
+  const b=e.target.closest('.filter-btn');if(!b)return;
+  currentFilter=b.dataset.filter;
+  document.querySelectorAll('.filter-btn').forEach(x=>{
+    x.className=x.dataset.filter===currentFilter?'filter-btn px-3 py-1.5 rounded-lg bg-gold-500 text-slate-900 font-medium':'filter-btn px-3 py-1.5 rounded-lg bg-slate-800';
+  });
+  render();
+};
+
+function calcRisk(){
+  const bal=+document.getElementById('rc-balance').value||0;
+  const pct=+document.getElementById('rc-risk').value||1;
+  const entry=+document.getElementById('rc-entry').value||0;
+  const sl=+document.getElementById('rc-sl').value||0;
+  const risk$=bal*(pct/100);
+  const dist=Math.abs(entry-sl)||1;
+  const units=risk$/dist;
+  document.getElementById('rc-out').textContent=`Risk $${risk$.toFixed(2)} · Stop distance ${dist.toFixed(2)} · Position units ≈ ${units.toFixed(4)}`;
+}
+['rc-balance','rc-risk','rc-entry','rc-sl'].forEach(id=>document.getElementById(id).addEventListener('input',calcRisk));
+calcRisk();
+
+async function load(){
+  try{
+    const data=await (await fetch('signals.json?t='+Date.now(),{cache:'no-store'})).json();
+    const sigs=data.signals||[];
+    const watch=(data.watchlist||[]).map(w=>({...w,tier:'WATCHLIST'}));
+    allSignals=[...sigs,...watch];
+    document.getElementById('stat-active').textContent=String(sigs.length);
+    document.getElementById('stat-pairs').textContent=(data.pairs||[]).join(' · ')||'XAU · BTC · ETH';
+    const st=data.stats||{};
+    document.getElementById('stat-wr').textContent=st.win_rate!=null?st.win_rate+'%':'—';
+    document.getElementById('stat-ar').textContent=st.avg_r!=null?st.avg_r:'—';
+    const closed=data.closed||[];
+    document.getElementById('closed-list').innerHTML=closed.length?closed.slice(0,8).map(c=>
+      `<div class="flex justify-between bg-slate-900 border border-slate-800 rounded-lg px-3 py-2"><span>${c.pair} ${c.direction} · ${c.outcome||''}</span><span class="${(c.result_r||0)>0?'text-emerald-400':'text-rose-400'}">${c.result_r??'—'}R</span></div>`
+    ).join(''):'No closed trades yet.';
+    render();
+  }catch(e){
+    document.getElementById('signal-list').innerHTML='<p class="text-slate-500 text-sm">Could not load signals.json</p>';
+  }
+}
+load();setInterval(load,60000);
+</script>
 </body>
 </html>
