@@ -1,6 +1,4 @@
-"""
-Scored momentum for all configured symbols (XAUUSD, BTCUSD, …).
-"""
+"""Scored momentum for XAUUSD, BTCUSD, ETHUSD."""
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
@@ -15,17 +13,25 @@ from state_store import (
     is_duplicate,
     mark_fingerprint,
 )
-from config import (
-    SYMBOLS,
-    SIGNAL_COOLDOWN_MINUTES,
-    MIN_SIGNAL_SCORE,
-    NEWS_BLACKOUT,
-)
+from config import SYMBOLS, SIGNAL_COOLDOWN_MINUTES, MIN_SIGNAL_SCORE, NEWS_BLACKOUT
 
 try:
     from signals_writer import record_signal
 except Exception:
     record_signal = None
+
+try:
+    from trade_manager import register_open_trade
+except Exception:
+    register_open_trade = None
+
+
+def _invalidation(setup: dict) -> str:
+    d = setup.get("direction", "BUY")
+    sl = setup.get("stop_loss")
+    if d == "BUY":
+        return f"H1 close below {sl}"
+    return f"H1 close above {sl}"
 
 
 def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
@@ -38,10 +44,10 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     max_daily = int(meta.get("max_daily", 3))
     if signals_posted_today(symbol) >= max_daily:
-        print(f"{symbol}: daily limit reached")
+        print(f"{symbol}: daily limit")
         return None
     if not cooldown_ok(symbol, SIGNAL_COOLDOWN_MINUTES):
-        print(f"{symbol}: cooldown active")
+        print(f"{symbol}: cooldown")
         return None
 
     data = get_multi_timeframe_data(symbol)
@@ -51,17 +57,14 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol)
     if not setup:
-        print(f"{symbol}: score below threshold / no lean")
+        print(f"{symbol}: no score")
         return None
-
     if is_duplicate(setup):
-        print(f"{symbol}: duplicate fingerprint")
+        print(f"{symbol}: duplicate")
         return None
 
-    print(
-        f"SCORED {symbol} {setup['tier']} {setup['direction']} "
-        f"score={setup['score']} model={setup['model']} RR={setup['rr']}"
-    )
+    setup["invalidation"] = _invalidation(setup)
+    print(f"SCORED {symbol} {setup['tier']} {setup['direction']} {setup['score']}")
     return setup
 
 
@@ -71,7 +74,7 @@ def run_momentum() -> bool:
         try:
             setup = generate_for_symbol(symbol)
         except Exception as e:
-            print(f"{symbol} momentum error:", e)
+            print(f"{symbol} error:", e)
             continue
         if not setup:
             continue
@@ -93,11 +96,15 @@ def run_momentum() -> bool:
             mark_signal_posted(symbol)
             mark_cooldown(symbol)
             mark_fingerprint(setup)
+            if register_open_trade:
+                try:
+                    register_open_trade(setup)
+                except Exception as e:
+                    print("register trade", e)
             if record_signal:
                 try:
                     record_signal(setup, watchlist=False)
                 except Exception as e:
                     print("writer", e)
-            print(f"{symbol} trade posted score={setup['score']}")
             any_trade = True
     return any_trade

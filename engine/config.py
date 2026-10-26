@@ -1,22 +1,20 @@
-"""Configuration — XAU + BTC scored system + separate news engine"""
+"""Configuration — XAU + BTC + ETH scored system"""
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-TELEGRAM_BOT_TOKEN = os.getenv(
-    "TELEGRAM_BOT_TOKEN",
-    "8821872779:AAFIZW1pIaobz9MpQek5JoxXMWwAuX38_18",
-)
+# Token ONLY from env/secrets — never hardcode
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+if not TELEGRAM_BOT_TOKEN:
+    print("WARNING: TELEGRAM_BOT_TOKEN missing — set GitHub secret")
 
 _raw_chat = os.getenv("TELEGRAM_CHANNEL_ID", "-1004499950812")
 if _raw_chat and str(_raw_chat).lstrip("-").isdigit():
     TELEGRAM_CHANNEL_ID = str(_raw_chat)
 else:
-    print(f"Ignoring non-numeric TELEGRAM_CHANNEL_ID={_raw_chat!r}")
     TELEGRAM_CHANNEL_ID = "-1004499950812"
 
-# Symbol registry: display symbol → Coinbase product + risk profile
 SYMBOLS = {
     "XAUUSD": {
         "product": "PAXG-USD",
@@ -31,7 +29,8 @@ SYMBOLS = {
         "vol_abs_strong": 20.0,
         "vol_abs_mid": 12.0,
         "decimals": 2,
-        "session_mode": "fx",  # London/NY preferred
+        "session_mode": "fx",
+        "contract_note": "XAU ~$ per oz; size by broker (oz/lots)",
     },
     "BTCUSD": {
         "product": "BTC-USD",
@@ -46,14 +45,31 @@ SYMBOLS = {
         "vol_abs_strong": 350.0,
         "vol_abs_mid": 180.0,
         "decimals": 2,
-        "session_mode": "crypto",  # 24/7 weekdays
+        "session_mode": "crypto",
+        "contract_note": "BTC size in coins or USD notional",
+    },
+    "ETHUSD": {
+        "product": "ETH-USD",
+        "sl_buffer": float(os.getenv("ETH_SL_BUFFER", "25")),
+        "max_daily": int(os.getenv("MAX_DAILY_SIGNALS_ETH", "3")),
+        "disp_strong": 45.0,
+        "disp_solid": 22.0,
+        "disp_ok": 10.0,
+        "disp_vote": 12.0,
+        "risk_min": 15.0,
+        "risk_max": 400.0,
+        "vol_abs_strong": 35.0,
+        "vol_abs_mid": 18.0,
+        "decimals": 2,
+        "session_mode": "crypto",
+        "contract_note": "ETH size in coins or USD notional",
     },
 }
 
 PAIRS = list(SYMBOLS.keys())
-DEFAULT_RISK_PERCENT = 1.0
+DEFAULT_RISK_PERCENT = float(os.getenv("DEFAULT_RISK_PERCENT", "1.0"))
 MOMENTUM_RISK_PERCENT = 0.75
-XAU_SL_BUFFER = SYMBOLS["XAUUSD"]["sl_buffer"]  # back-compat
+XAU_SL_BUFFER = SYMBOLS["XAUUSD"]["sl_buffer"]
 
 LONDON_START = int(os.getenv("LONDON_START", "7"))
 LONDON_END = int(os.getenv("LONDON_END", "16"))
@@ -72,5 +88,6 @@ MAX_SIGNALS_PER_DAY = MAX_DAILY_SIGNALS_XAU
 MAX_MOMENTUM_PER_DAY = MAX_DAILY_SIGNALS_XAU
 SIGNAL_COOLDOWN_MINUTES = int(os.getenv("SIGNAL_COOLDOWN_MINUTES", "90"))
 NEWS_SCORE_BONUS_MAX = int(os.getenv("NEWS_SCORE_BONUS_MAX", "10"))
-
 NEWS_BLACKOUT = os.getenv("NEWS_BLACKOUT", "false").lower() in ("1", "true", "yes")
+
+# EURUSD/GBPUSD: no free Coinbase OHLC — deferred until FX data source is added

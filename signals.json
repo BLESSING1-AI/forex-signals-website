@@ -1,61 +1,12 @@
 {
-  "lastUpdated": "2026-10-26T08:07:21.784595+00:00",
+  "lastUpdated": null,
   "mode": "scored",
-  "pairs": [
-    "XAUUSD",
-    "BTCUSD"
-  ],
-  "maxSignalsPerDay": {
-    "XAUUSD": 3,
-    "BTCUSD": 3
-  },
+  "pairs": ["XAUUSD", "BTCUSD", "ETHUSD"],
+  "maxSignalsPerDay": {"XAUUSD": 3, "BTCUSD": 3, "ETHUSD": 3},
   "telegram": "https://t.me/PriceActionSignalsHub",
-  "signals": [
-    {
-      "pair": "XAUUSD",
-      "direction": "SELL",
-      "tier": "A",
-      "score": 78,
-      "model": "pullback_momentum",
-      "entry_zone": "4003.83-4039.39",
-      "stop_loss": "4059.89",
-      "tp1": "3830.21",
-      "tp2": "3906.77",
-      "tp3": "3952.71",
-      "rr": 1.8,
-      "reasons": [
-        "BOS confirmed",
-        "Strong displacement",
-        "D1+H4 alignment",
-        "FVG valid",
-        "Range expansion",
-        "Active session"
-      ],
-      "postedAt": "2026-10-23T14:27:16.525349+00:00"
-    }
-  ],
-  "watchlist": [
-    {
-      "pair": "BTCUSD",
-      "direction": "SELL",
-      "tier": "WATCHLIST",
-      "score": 72,
-      "model": "pullback_momentum",
-      "entry_zone": "79716.29-80110.59",
-      "stop_loss": "80264.58",
-      "tp1": "78157.74",
-      "tp2": "78860.02",
-      "tp3": "79281.39",
-      "rr": 1.8,
-      "reasons": [
-        "BOS confirmed",
-        "Solid momentum",
-        "H4 alignment",
-        "FVG valid",
-        "Active session"
-      ],
-      "postedAt": "2026-10-26T08:07:21.784592+00:00"
-    }
-  ],
+  "signals": [],
+  "watchlist": [],
+  "closed": [],
+  "stats": {},
   "events": []
 }

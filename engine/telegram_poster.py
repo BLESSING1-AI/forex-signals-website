@@ -1,4 +1,4 @@
-"""Telegram — multi-symbol scored signals"""
+"""Telegram — multi-symbol scored signals + invalidation line"""
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
@@ -11,6 +11,9 @@ def _chat_id() -> str:
     return CHANNEL_FALLBACK
 
 def send_message(text: str) -> bool:
+    if not TELEGRAM_BOT_TOKEN:
+        print("No TELEGRAM_BOT_TOKEN")
+        return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     chat = _chat_id()
     try:
@@ -39,6 +42,16 @@ def send_message(text: str) -> bool:
         print("Send failed:", e)
         return False
 
+def _invalidation_line(setup: dict) -> str:
+    inv = setup.get("invalidation")
+    if inv:
+        return f"⚠️ Invalid: {inv}"
+    d = setup.get("direction", "BUY")
+    sl = setup.get("stop_loss", "?")
+    if d == "BUY":
+        return f"⚠️ Invalid: close below SL {sl}"
+    return f"⚠️ Invalid: close above SL {sl}"
+
 def send_scored_signal(setup: dict) -> bool:
     pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
@@ -64,6 +77,8 @@ def send_scored_signal(setup: dict) -> bool:
         f"📐 RR: 1:{setup.get('rr', '—')}",
         f"🔥 Confidence: {conf}",
         f"Risk 1%",
+        _invalidation_line(setup),
+        f"After TP1 → SL to BE",
         f"Reason: {reason_txt}",
     ]
     return send_message("\n".join(lines))
