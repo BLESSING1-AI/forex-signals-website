@@ -1,8 +1,10 @@
 """
-Event trains — FOMC/NFP/CPI etc.
-- Daily notice once per SAST day (anytime until events pass)
-- Prefer FOMC/NFP/CPI over secondary high-impact (EIA etc.)
-- Train 1 ~30m / few min before + Train 2 after
+Event trains — one message per event (no clustering).
+User style: Train 1 in/out for a quick scalp, then Train 2 on confirmation.
+- Per-event daily notice (once each)
+- Train 1 ~30m before (per event)
+- Final few min before (per event)
+- Train 2 after confirm (per event)
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Set
@@ -17,9 +19,9 @@ from state_store import load_sent, save_sent
 SAST = timezone(timedelta(hours=2))
 _sent: Set[str] = set()
 
-# Rank for daily notice (lower = higher priority)
+# Primary events always get full trains; secondary still get own notice if high
 PRIORITY = [
-    "fomc", "fed interest", "interest rate decision", "powell",
+    "fomc", "fed interest", "interest rate decision", "powell", "press conference",
     "non-farm", "nonfarm", "nfp", "payroll",
     "cpi", "consumer price",
     "core pce", "pce",
@@ -34,7 +36,10 @@ def _priority(name: str) -> int:
     for i, k in enumerate(PRIORITY):
         if k in n:
             return i
-    return 100
+    return 80
+
+def _is_primary(name: str) -> bool:
+    return _priority(name) < 20
 
 def _sast(dt: datetime) -> str:
     if dt.tzinfo is None:
@@ -47,7 +52,8 @@ def _sast_full(dt: datetime) -> str:
     return dt.astimezone(SAST).strftime("%a %d %b %H:%M SAST")
 
 def _key(event: Dict, kind: str) -> str:
-    return f"{kind}:{event['name'][:30]}:{event['time'].strftime('%Y%m%d%H%M')}"
+    # unique per event name + time so each event is independent
+    return f"{kind}:{event['name'][:40]}:{event['time'].strftime('%Y%m%d%H%M')}"
 
 def _gold(bias: str) -> str:
     return "BUY GOLD" if bias == "bullish" else "SELL GOLD"
@@ -103,7 +109,7 @@ def _short_pre(event, bias, levels, mins, tag) -> str:
         f"In: {levels['zone']}\n"
         f"SL: {levels['sl']}\n"
         f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
-        f"Risk 1% · Wait Train 2 if messy"
+        f"Risk 1% · Scalp OK · Train 2 separate"
     )
 
 def _short_post(event, bias, levels, conf) -> str:
@@ -114,83 +120,65 @@ def _short_post(event, bias, levels, conf) -> str:
         f"In: {levels['zone']}\n"
         f"SL: {levels['sl']}\n"
         f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
-        f"BE after TP1 · Risk 1%"
+        f"BE after TP1 · Risk 1% · Own signal"
     )
 
-def _announce_once_today() -> None:
+def _announce_each_event_today() -> None:
+    """
+    One short notice PER upcoming event today (not one clustered list).
+    Primary events always; secondary high-impact also get their own line.
+    """
     now = datetime.now(timezone.utc)
     sast_today = now.astimezone(SAST).date()
-    day_key = f"DAILY_NOTICE:{sast_today.isoformat()}"
-    if _already(day_key):
-        print("Daily notice already sent for", sast_today)
-        return
 
     try:
-        upcoming = fetch_upcoming_events(hours_ahead=72)
+        upcoming = fetch_upcoming_events(hours_ahead=48)
     except Exception as e:
-        print("calendar fetch fail", e)
-        upcoming = []
-
-    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=2)]
-    today_ev = [e for e in future if e["time"].astimezone(SAST).date() == sast_today]
-
-    # Prefer primary events (FOMC etc.) for the day
-    if today_ev:
-        today_ev_sorted = sorted(today_ev, key=lambda e: (_priority(e["name"]), e["time"]))
-        pool = today_ev_sorted
-        when_label = "TODAY"
-    elif future:
-        pool = sorted(future, key=lambda e: (_priority(e["name"]), e["time"]))
-        when_label = "NEXT"
-    else:
-        print("No upcoming high-impact events")
+        print("calendar", e)
         return
 
-    # List ALL remaining high-priority events on that SAST day (not only 1h cluster)
-    day = pool[0]["time"].astimezone(SAST).date()
-    day_events = [e for e in pool if e["time"].astimezone(SAST).date() == day]
-    # de-dupe by name, keep earliest time order for display but sort by priority first for headline
-    headline = day_events[0]
-    names = []
-    seen = set()
-    for e in sorted(day_events, key=lambda x: x["time"]):
-        n = e["name"]
-        if n not in seen:
-            seen.add(n)
-            names.append(f"{n} · {_sast(e['time'])}")
+    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=5)]
+    today_ev = [e for e in future if e["time"].astimezone(SAST).date() == sast_today]
+    if not today_ev:
+        # next day first primary only as heads-up
+        prim = [e for e in future if _is_primary(e["name"])]
+        if not prim:
+            return
+        today_ev = prim[:1]
 
+    # sort by time; each event own message
+    today_ev = sorted(today_ev, key=lambda e: e["time"])
     lean = _htf_bias()
     lean_txt = _gold(lean) if lean else "TBD closer to release"
 
-    msg = (
-        f"📅 {when_label}'S HIGH IMPACT\n"
-        f"Focus: {headline['name']}\n"
-        f"{_sast_full(headline['time'])}\n"
-        + "\n".join(f"• {n}" for n in names[:8]) +
-        f"\nLean: {lean_txt}\n"
-        f"Train 1 ~30m before · final alert a few min before"
-    )
-    print("Attempting daily notice:", names)
-    ok = send_message(msg)
-    if ok:
-        _mark(day_key)
-        print("Daily event notice SENT")
-    else:
-        print("Daily event notice FAILED to send (check TELEGRAM_BOT_TOKEN secret)")
+    for e in today_ev:
+        k = _key(e, "NOTICE")
+        if _already(k):
+            continue
+        # Skip pure oil inventory unless user wants all — still own notice but mark secondary
+        name = e["name"]
+        tag = "PRIMARY" if _is_primary(name) else "HIGH"
+        msg = (
+            f"📅 EVENT · {tag}\n"
+            f"{name}\n"
+            f"{_sast_full(e['time'])}\n"
+            f"Lean: {lean_txt}\n"
+            f"Train 1 ~30m before · Train 2 after confirm\n"
+            f"Each train is its own trade"
+        )
+        if send_message(msg):
+            _mark(k)
+            print("Notice sent for", name)
+        else:
+            print("Notice failed", name)
 
 def generate_pre(event: Dict, tag: str) -> bool:
     k = _key(event, f"PRE{tag}")
     if _already(k):
         return False
-    # Prefer primary events for trains
-    if _priority(event["name"]) > 20 and tag == "30M":
-        # still allow but log
-        print("Secondary event train:", event["name"])
     bias = _htf_bias()
     if not bias:
-        # Default lean sell/buy neutral skip — still need a side for pre-plan
-        # Use H4 only fallback already in _htf; if none, skip
-        print("No HTF bias for pre")
+        print("No HTF bias for pre", event.get("name"))
         return False
     data = get_multi_timeframe_data("XAUUSD")
     m15 = data.get("15m")
@@ -263,35 +251,35 @@ def run_event_cycle() -> List[str]:
     posted = []
 
     try:
-        _announce_once_today()
+        _announce_each_event_today()
     except Exception as e:
-        print("daily notice error", e)
+        print("notice error", e)
 
-    # Wider window so FOMC trains don't miss the 10-min cron slots
     window = get_events_in_window(minutes_before=45, minutes_after=50)
-    seen_slot = set()
+    # Each event is independent — do not merge by time slot only
+    seen = set()
     unique = []
     for e in window:
-        slot = e["time"].strftime("%Y%m%d%H%M") + e["name"][:20]
-        if slot in seen_slot:
+        k = f"{e['name'][:40]}:{e['time'].strftime('%Y%m%d%H%M')}"
+        if k in seen:
             continue
-        seen_slot.add(slot)
+        seen.add(k)
         unique.append(e)
 
-    # Prefer primary events for trains when several fire
-    unique.sort(key=lambda e: (_priority(e["name"]), e["time"]))
+    unique.sort(key=lambda e: e["time"])
 
     for event in unique:
         mins = event.get("minutes_to_event", 0)
 
+        # Each event gets its own Train 1 / final / Train 2
         if 22 <= mins <= 40 and generate_pre(event, "30M"):
-            posted.append("PRE30")
+            posted.append(f"PRE30:{event['name'][:20]}")
 
         if 2 <= mins <= 12 and generate_pre(event, "5M"):
-            posted.append("PRE5")
+            posted.append(f"PRE5:{event['name'][:20]}")
 
         if -45 <= mins <= 15 and generate_post(event):
-            posted.append("POST")
+            posted.append(f"POST:{event['name'][:20]}")
 
     save_sent(_sent)
     return posted
