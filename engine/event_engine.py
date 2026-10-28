@@ -1,9 +1,7 @@
 """
-Event trains — one message per event (no clustering).
-- Per-event daily notice (once each)
-- Train 1 ~30m before (per event)
-- Final few min before (per event)
-- Train 2 after confirm (per event)
+Event trains — one message per event.
+Train 1 (pre): defensive scalp — wider SL, tight TP1, 0.5% risk (spike protection).
+Train 2 (post): normal plan after confirmation — 1% risk.
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Set
@@ -78,24 +76,69 @@ def _htf_bias() -> Optional[str]:
         print("htf bias", e)
     return None
 
+def _m15_aligned(bias: str) -> bool:
+    """Soft filter: prefer pre-entry when M15 not fighting HTF hard."""
+    try:
+        data = get_multi_timeframe_data("XAUUSD")
+        m15 = data.get("15m")
+        if m15 is None or m15.empty or len(m15) < 8:
+            return True
+        net = float(m15["close"].iloc[-1] - m15["close"].iloc[-6])
+        if bias == "bearish" and net > 12:
+            return False  # strong opposing push
+        if bias == "bullish" and net < -12:
+            return False
+        return True
+    except Exception:
+        return True
+
 def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Dict:
-    buf = XAU_SL_BUFFER + (10 if wide else 0)
-    if bias == "bullish":
-        el, eh = round(price - 1.5, 2), round(price + 0.8, 2)
-        stop = round(min(structure, price) - buf, 2)
+    """
+    wide=True (Train 1 pre-event):
+      - much wider SL (spike buffer)
+      - tight TP1 for quick scalp out
+      - moderate TP2/TP3 if they hold
+    wide=False (Train 2):
+      - normal structure SL + standard TPs
+    """
+    if wide:
+        buf = max(XAU_SL_BUFFER + 35, 50)  # room for opposite spike
+        # slightly offset entry away from current print noise
+        if bias == "bullish":
+            el, eh = round(price - 0.5, 2), round(price + 2.0, 2)
+            stop = round(min(structure, price) - buf, 2)
+        else:
+            el, eh = round(price - 2.0, 2), round(price + 0.5, 2)
+            stop = round(max(structure, price) + buf, 2)
+        mid = (el + eh) / 2
+        risk = abs(mid - stop) or 1
+        # TP1 very close: ~0.6–0.8R scalp; TP2/3 further if held
+        if bias == "bullish":
+            t1 = round(mid + risk * 0.7, 2)
+            t2 = round(mid + risk * 1.5, 2)
+            t3 = round(mid + risk * 2.5, 2)
+        else:
+            t1 = round(mid - risk * 0.7, 2)
+            t2 = round(mid - risk * 1.5, 2)
+            t3 = round(mid - risk * 2.5, 2)
     else:
-        el, eh = round(price - 0.8, 2), round(price + 1.5, 2)
-        stop = round(max(structure, price) + buf, 2)
-    mid = (el + eh) / 2
-    risk = abs(mid - stop) or 1
-    if bias == "bullish":
-        t1 = round(mid + risk * 1.5, 2)
-        t2 = round(mid + risk * 3.0, 2)
-        t3 = round(mid + risk * 5.0, 2)
-    else:
-        t1 = round(mid - risk * 1.5, 2)
-        t2 = round(mid - risk * 3.0, 2)
-        t3 = round(mid - risk * 5.0, 2)
+        buf = XAU_SL_BUFFER + 5
+        if bias == "bullish":
+            el, eh = round(price - 1.5, 2), round(price + 0.8, 2)
+            stop = round(min(structure, price) - buf, 2)
+        else:
+            el, eh = round(price - 0.8, 2), round(price + 1.5, 2)
+            stop = round(max(structure, price) + buf, 2)
+        mid = (el + eh) / 2
+        risk = abs(mid - stop) or 1
+        if bias == "bullish":
+            t1 = round(mid + risk * 1.5, 2)
+            t2 = round(mid + risk * 3.0, 2)
+            t3 = round(mid + risk * 5.0, 2)
+        else:
+            t1 = round(mid - risk * 1.5, 2)
+            t2 = round(mid - risk * 3.0, 2)
+            t3 = round(mid - risk * 5.0, 2)
     return {"zone": f"{el}-{eh}", "sl": str(stop), "tp1": str(t1), "tp2": str(t2), "tp3": str(t3)}
 
 def _short_pre(event, bias, levels, mins, tag) -> str:
@@ -106,7 +149,7 @@ def _short_pre(event, bias, levels, mins, tag) -> str:
         f"In: {levels['zone']}\n"
         f"SL: {levels['sl']}\n"
         f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
-        f"Risk 1%"
+        f"Risk 0.5% · Take TP1"
     )
 
 def _short_post(event, bias, levels, conf) -> str:
@@ -168,6 +211,10 @@ def generate_pre(event: Dict, tag: str) -> bool:
     bias = _htf_bias()
     if not bias:
         print("No HTF bias for pre", event.get("name"))
+        return False
+    # Avoid forcing Train 1 into a strong opposing M15 spike
+    if not _m15_aligned(bias):
+        print("Skip pre — M15 opposing", event.get("name"))
         return False
     data = get_multi_timeframe_data("XAUUSD")
     m15 = data.get("15m")
