@@ -1,7 +1,7 @@
 """
 Event trains — one message per event.
-Train 1 (pre): defensive scalp — wider SL, tight TP1, 0.5% risk (spike protection).
-Train 2 (post): normal plan after confirmation — 1% risk.
+Train 1 (pre): defensive scalp — wider SL, tight TP1, 0.5% risk.
+Train 2 (post): after confirmation — 1% risk.
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Set
@@ -77,33 +77,23 @@ def _htf_bias() -> Optional[str]:
     return None
 
 def _m15_aligned(bias: str) -> bool:
-    """Soft filter: prefer pre-entry when M15 not fighting HTF hard."""
     try:
         data = get_multi_timeframe_data("XAUUSD")
         m15 = data.get("15m")
         if m15 is None or m15.empty or len(m15) < 8:
             return True
         net = float(m15["close"].iloc[-1] - m15["close"].iloc[-6])
-        if bias == "bearish" and net > 12:
-            return False  # strong opposing push
-        if bias == "bullish" and net < -12:
+        if bias == "bearish" and net > 15:
+            return False
+        if bias == "bullish" and net < -15:
             return False
         return True
     except Exception:
         return True
 
 def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Dict:
-    """
-    wide=True (Train 1 pre-event):
-      - much wider SL (spike buffer)
-      - tight TP1 for quick scalp out
-      - moderate TP2/TP3 if they hold
-    wide=False (Train 2):
-      - normal structure SL + standard TPs
-    """
     if wide:
-        buf = max(XAU_SL_BUFFER + 35, 50)  # room for opposite spike
-        # slightly offset entry away from current print noise
+        buf = max(XAU_SL_BUFFER + 35, 50)
         if bias == "bullish":
             el, eh = round(price - 0.5, 2), round(price + 2.0, 2)
             stop = round(min(structure, price) - buf, 2)
@@ -112,7 +102,6 @@ def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Di
             stop = round(max(structure, price) + buf, 2)
         mid = (el + eh) / 2
         risk = abs(mid - stop) or 1
-        # TP1 very close: ~0.6–0.8R scalp; TP2/3 further if held
         if bias == "bullish":
             t1 = round(mid + risk * 0.7, 2)
             t2 = round(mid + risk * 1.5, 2)
@@ -166,13 +155,11 @@ def _short_post(event, bias, levels, conf) -> str:
 def _announce_each_event_today() -> None:
     now = datetime.now(timezone.utc)
     sast_today = now.astimezone(SAST).date()
-
     try:
         upcoming = fetch_upcoming_events(hours_ahead=48)
     except Exception as e:
         print("calendar", e)
         return
-
     future = [e for e in upcoming if e["time"] > now + timedelta(minutes=5)]
     today_ev = [e for e in future if e["time"].astimezone(SAST).date() == sast_today]
     if not today_ev:
@@ -180,11 +167,9 @@ def _announce_each_event_today() -> None:
         if not prim:
             return
         today_ev = prim[:1]
-
     today_ev = sorted(today_ev, key=lambda e: e["time"])
     lean = _htf_bias()
     lean_txt = _gold(lean) if lean else "TBD closer to release"
-
     for e in today_ev:
         k = _key(e, "NOTICE")
         if _already(k):
@@ -201,21 +186,40 @@ def _announce_each_event_today() -> None:
         if send_message(msg):
             _mark(k)
             print("Notice sent for", name)
-        else:
-            print("Notice failed", name)
 
-def generate_pre(event: Dict, tag: str) -> bool:
+def generate_pre(event: Dict, tag: str, force: bool = False) -> bool:
     k = _key(event, f"PRE{tag}")
-    if _already(k):
-        return False
+    # Also block if any PRE already sent for this event
+    if _already(k) or _already(_key(event, "PRE30M")) or _already(_key(event, "PRE5M")):
+        if not (force and tag == "NOW" and not _already(_key(event, "PRENOW"))):
+            if _already(k):
+                return False
+            if tag != "NOW" and (_already(_key(event, "PRE30M")) or _already(_key(event, "PRE5M"))):
+                return False
+    if tag == "NOW":
+        k = _key(event, "PRENOW")
+        if _already(k):
+            return False
+
     bias = _htf_bias()
     if not bias:
-        print("No HTF bias for pre", event.get("name"))
+        # Last resort lean from price vs structure on H4 net
+        try:
+            data = get_multi_timeframe_data("XAUUSD")
+            h4 = data.get("4h")
+            if h4 is not None and not h4.empty and len(h4) >= 5:
+                net = float(h4["close"].iloc[-1] - h4["close"].iloc[-5])
+                bias = "bullish" if net > 0 else "bearish"
+        except Exception:
+            pass
+    if not bias:
+        print("No bias for pre", event.get("name"))
         return False
-    # Avoid forcing Train 1 into a strong opposing M15 spike
-    if not _m15_aligned(bias):
+
+    if not force and not _m15_aligned(bias):
         print("Skip pre — M15 opposing", event.get("name"))
         return False
+
     data = get_multi_timeframe_data("XAUUSD")
     m15 = data.get("15m")
     if m15 is None or m15.empty:
@@ -228,6 +232,7 @@ def generate_pre(event: Dict, tag: str) -> bool:
     mins = event.get("minutes_to_event", 0)
     if send_message(_short_pre(event, bias, levels, mins, tag)):
         _mark(k)
+        _mark(_key(event, f"PRE{tag}"))
         return True
     return False
 
@@ -291,7 +296,23 @@ def run_event_cycle() -> List[str]:
     except Exception as e:
         print("notice error", e)
 
-    window = get_events_in_window(minutes_before=45, minutes_after=50)
+    now = datetime.now(timezone.utc)
+    # Pull calendar directly — wider net
+    try:
+        upcoming = fetch_upcoming_events(hours_ahead=24)
+    except Exception as e:
+        print("upcoming fail", e)
+        upcoming = []
+
+    window = []
+    for e in upcoming:
+        mins = (e["time"] - now).total_seconds() / 60
+        e["minutes_to_event"] = mins
+        if -50 <= mins <= 50:
+            window.append(e)
+
+    print("Event window count:", len(window), [(x["name"][:25], round(x["minutes_to_event"])) for x in window])
+
     seen = set()
     unique = []
     for e in window:
@@ -300,20 +321,35 @@ def run_event_cycle() -> List[str]:
             continue
         seen.add(k)
         unique.append(e)
-
     unique.sort(key=lambda e: e["time"])
 
     for event in unique:
         mins = event.get("minutes_to_event", 0)
 
-        if 22 <= mins <= 40 and generate_pre(event, "30M"):
-            posted.append(f"PRE30:{event['name'][:20]}")
+        # Wide Train 1 window: 12–45 min before
+        if 12 <= mins <= 45:
+            if generate_pre(event, "30M"):
+                posted.append(f"PRE30:{event['name'][:20]}")
 
-        if 2 <= mins <= 12 and generate_pre(event, "5M"):
-            posted.append(f"PRE5:{event['name'][:20]}")
+        # Final pre: 1–15 min before
+        if 1 <= mins <= 15:
+            if generate_pre(event, "5M"):
+                posted.append(f"PRE5:{event['name'][:20]}")
 
-        if -45 <= mins <= 15 and generate_post(event):
-            posted.append(f"POST:{event['name'][:20]}")
+        # Force primary if still inside 45m and no pre at all
+        if _is_primary(event["name"]) and 3 <= mins <= 45:
+            pre_keys = [
+                _key(event, "PRE30M"),
+                _key(event, "PRE5M"),
+                _key(event, "PRENOW"),
+            ]
+            if not any(_already(k) for k in pre_keys):
+                if generate_pre(event, "NOW", force=True):
+                    posted.append(f"PRENOW:{event['name'][:20]}")
+
+        if -50 <= mins <= 20:
+            if generate_post(event):
+                posted.append(f"POST:{event['name'][:20]}")
 
     save_sent(_sent)
     return posted
