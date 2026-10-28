@@ -1,10 +1,9 @@
-"""Configuration — XAU + BTC + ETH scored system"""
+"""Configuration — XAU + BTC scored system"""
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Token ONLY from env/secrets — never hardcode
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 if not TELEGRAM_BOT_TOKEN:
     print("WARNING: TELEGRAM_BOT_TOKEN missing — set GitHub secret")
@@ -30,7 +29,6 @@ SYMBOLS = {
         "vol_abs_mid": 12.0,
         "decimals": 2,
         "session_mode": "fx",
-        "contract_note": "XAU ~$ per oz; size by broker (oz/lots)",
     },
     "BTCUSD": {
         "product": "BTC-USD",
@@ -46,23 +44,6 @@ SYMBOLS = {
         "vol_abs_mid": 180.0,
         "decimals": 2,
         "session_mode": "crypto",
-        "contract_note": "BTC size in coins or USD notional",
-    },
-    "ETHUSD": {
-        "product": "ETH-USD",
-        "sl_buffer": float(os.getenv("ETH_SL_BUFFER", "25")),
-        "max_daily": int(os.getenv("MAX_DAILY_SIGNALS_ETH", "3")),
-        "disp_strong": 45.0,
-        "disp_solid": 22.0,
-        "disp_ok": 10.0,
-        "disp_vote": 12.0,
-        "risk_min": 15.0,
-        "risk_max": 400.0,
-        "vol_abs_strong": 35.0,
-        "vol_abs_mid": 18.0,
-        "decimals": 2,
-        "session_mode": "crypto",
-        "contract_note": "ETH size in coins or USD notional",
     },
 }
 
@@ -89,5 +70,3 @@ MAX_MOMENTUM_PER_DAY = MAX_DAILY_SIGNALS_XAU
 SIGNAL_COOLDOWN_MINUTES = int(os.getenv("SIGNAL_COOLDOWN_MINUTES", "90"))
 NEWS_SCORE_BONUS_MAX = int(os.getenv("NEWS_SCORE_BONUS_MAX", "10"))
 NEWS_BLACKOUT = os.getenv("NEWS_BLACKOUT", "false").lower() in ("1", "true", "yes")
-
-# EURUSD/GBPUSD: no free Coinbase OHLC — deferred until FX data source is added

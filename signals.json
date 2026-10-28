@@ -1,8 +1,8 @@
 {
   "lastUpdated": null,
   "mode": "scored",
-  "pairs": ["XAUUSD", "BTCUSD", "ETHUSD"],
-  "maxSignalsPerDay": {"XAUUSD": 3, "BTCUSD": 3, "ETHUSD": 3},
+  "pairs": ["XAUUSD", "BTCUSD"],
+  "maxSignalsPerDay": {"XAUUSD": 3, "BTCUSD": 3},
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [],
   "watchlist": [],

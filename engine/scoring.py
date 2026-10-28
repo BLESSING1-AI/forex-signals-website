@@ -1,5 +1,6 @@
 """
-Weighted setup quality score 0–100 — symbol-aware (XAU / BTC).
+Weighted setup quality score 0–100 — XAU / BTC.
+TP1 = closest (~1.8R), TP2 = mid (~3R), TP3 = furthest (~5R).
 """
 from typing import Dict, Any, Optional, List
 import pandas as pd
@@ -33,7 +34,6 @@ from datetime import datetime, timezone
 def _session_points(mode: str) -> int:
     h = datetime.now(timezone.utc).hour
     if mode == "crypto":
-        # Crypto trades 24/7; slight preference for US/EU active hours
         if (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END):
             return 5
         return 3
@@ -211,7 +211,6 @@ def score_setup(
             else float(m15["high"].tail(20).max())
         )
 
-    # entry / SL scaled per symbol
     tick = max(price * 0.00005, 0.5) if symbol == "BTCUSD" else 0.5
     if direction == "bullish":
         el = round(min(structure + tick, price - tick * 2), decimals)
@@ -238,11 +237,18 @@ def score_setup(
         stop = round(mid - risk_max * 0.45, decimals) if direction == "bullish" else round(mid + risk_max * 0.45, decimals)
         risk = abs(mid - stop)
 
-    tp1 = round(mid + risk * 5.0, decimals) if direction == "bullish" else round(mid - risk * 5.0, decimals)
-    tp2 = round(mid + risk * 3.0, decimals) if direction == "bullish" else round(mid - risk * 3.0, decimals)
-    tp3 = round(mid + risk * max(MIN_RR, 1.8), decimals) if direction == "bullish" else round(mid - risk * max(MIN_RR, 1.8), decimals)
+    # TP1 closest, TP3 furthest
+    r1 = max(MIN_RR, 1.8)
+    if direction == "bullish":
+        tp1 = round(mid + risk * r1, decimals)
+        tp2 = round(mid + risk * 3.0, decimals)
+        tp3 = round(mid + risk * 5.0, decimals)
+    else:
+        tp1 = round(mid - risk * r1, decimals)
+        tp2 = round(mid - risk * 3.0, decimals)
+        tp3 = round(mid - risk * 5.0, decimals)
 
-    rr = abs(tp3 - mid) / risk if risk else 0.0
+    rr = abs(tp1 - mid) / risk if risk else 0.0
     rr = round(rr, 2)
 
     rr_pts = 0

@@ -23,7 +23,7 @@ def _load(path: str) -> dict:
     return {
         "lastUpdated": None,
         "mode": "scored",
-        "pairs": ["XAUUSD", "BTCUSD", "ETHUSD"],
+        "pairs": ["XAUUSD", "BTCUSD"],
         "signals": [],
         "watchlist": [],
         "closed": [],
@@ -63,7 +63,7 @@ def record_signal(setup: Dict[str, Any], watchlist: bool = False) -> None:
     for path in PATHS:
         data = _load(path)
         data["lastUpdated"] = now
-        data["pairs"] = ["XAUUSD", "BTCUSD", "ETHUSD"]
+        data["pairs"] = ["XAUUSD", "BTCUSD"]
         data["mode"] = "scored"
         if watchlist:
             wl = data.get("watchlist") or []
@@ -76,7 +76,7 @@ def record_signal(setup: Dict[str, Any], watchlist: bool = False) -> None:
         _save(path, data)
 
 def record_trade_update(trade: dict, event: str) -> None:
-    pass  # optional live feed later
+    pass
 
 def record_closed_trade(trade: dict) -> None:
     now = datetime.now(timezone.utc).isoformat()
@@ -95,7 +95,6 @@ def record_closed_trade(trade: dict) -> None:
         closed = data.get("closed") or []
         closed.insert(0, row)
         data["closed"] = closed[:MAX_CLOSED]
-        # rolling stats
         rs = [float(c.get("result_r") or 0) for c in data["closed"]]
         wins = sum(1 for r in rs if r > 0)
         data["stats"] = {

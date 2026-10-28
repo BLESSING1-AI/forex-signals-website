@@ -1,6 +1,5 @@
 """
-Trade lifecycle: closest TP first → BE, then mid/far TPs, SL, close.
-TP labels on signals: TP1 furthest / TP3 closest — management uses distance order.
+Trade lifecycle: TP1 (closest) → BE, TP2, TP3 (furthest) full exit, SL.
 """
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
@@ -36,9 +35,9 @@ def register_open_trade(setup: Dict[str, Any]) -> None:
         "entry_zone": setup.get("entry_zone"),
         "sl": float(setup.get("stop_loss", 0)),
         "original_sl": float(setup.get("stop_loss", 0)),
-        "tp1": float(setup.get("tp1", 0)),  # furthest
+        "tp1": float(setup.get("tp1", 0)),
         "tp2": float(setup.get("tp2", 0)),
-        "tp3": float(setup.get("tp3", 0)),  # closest
+        "tp3": float(setup.get("tp3", 0)),
         "tp1_hit": False,
         "tp2_hit": False,
         "tp3_hit": False,
@@ -99,7 +98,6 @@ def manage_open_trades() -> List[str]:
             continue
 
         d = t["direction"]
-        # SL / BE exit
         hit_sl = price <= t["sl"] if d == "BUY" else price >= t["sl"]
         if hit_sl:
             r = _r_multiple(t, t["sl"])
@@ -124,23 +122,22 @@ def manage_open_trades() -> List[str]:
                     print("closed writer", e)
             continue
 
-        # Manage by proximity: TP3 (closest) → TP2 → TP1 (furthest)
-        # Closest first → BE
-        if not t.get("tp3_hit") and _hit(d, price, t["tp3"]):
-            t["tp3_hit"] = True
+        # TP1 closest → BE
+        if not t.get("tp1_hit") and _hit(d, price, t["tp1"]):
+            t["tp1_hit"] = True
             t["be"] = True
             t["sl"] = t["entry"]
             msg = (
-                f"🎯 TP3 (closest) HIT · {pair} {d}\n"
+                f"🎯 TP1 HIT · {pair} {d}\n"
                 f"Price ~{round(price, 2)}\n"
                 f"Move SL → BE ({round(t['entry'], 2)})\n"
-                f"Runner on for TP2 / TP1"
+                f"Runner → TP2 / TP3"
             )
             send_message(msg)
-            events.append("TP3")
+            events.append("TP1")
             if record_trade_update:
                 try:
-                    record_trade_update(t, "TP3")
+                    record_trade_update(t, "TP1")
                 except Exception:
                     pass
 
@@ -152,27 +149,27 @@ def manage_open_trades() -> List[str]:
             msg = (
                 f"🎯 TP2 HIT · {pair} {d}\n"
                 f"Price ~{round(price, 2)}\n"
-                f"Partial · runner → TP1 (final)"
+                f"Partial · runner → TP3"
             )
             send_message(msg)
             events.append("TP2")
 
-        if not t.get("tp1_hit") and _hit(d, price, t["tp1"]):
-            t["tp1_hit"] = True
-            r = _r_multiple(t, t["tp1"])
+        if not t.get("tp3_hit") and _hit(d, price, t["tp3"]):
+            t["tp3_hit"] = True
+            r = _r_multiple(t, t["tp3"])
             msg = (
-                f"🏆 TP1 (final) HIT · {pair} {d}\n"
+                f"🏆 TP3 HIT · {pair} {d}\n"
                 f"Price ~{round(price, 2)}\n"
-                f"Full scale-out · ~{r}R"
+                f"Full target · ~{r}R"
             )
             send_message(msg)
             t["status"] = "closed"
             t["closed_at"] = datetime.now(timezone.utc).isoformat()
-            t["exit"] = t["tp1"]
+            t["exit"] = t["tp3"]
             t["result_r"] = r
-            t["outcome"] = "TP1"
+            t["outcome"] = "TP3"
             closed_log.append(t)
-            events.append("TP1")
+            events.append("TP3")
             if record_closed_trade:
                 try:
                     record_closed_trade(t)

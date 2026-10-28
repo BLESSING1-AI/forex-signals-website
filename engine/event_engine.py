@@ -1,9 +1,10 @@
 """
-Event trains — no spam
-- Once per day: morning notice for today's / next high-impact
-- Train 1 ~30m before (plan)
-- Few minutes before (final reminder + plan)
-- Train 2 after confirm (once)
+Event trains — FOMC/NFP/CPI etc.
+- Daily notice: once per SAST day, anytime until first high-impact (not only 07:00)
+- Train 1 ~30m before
+- Few minutes before
+- Train 2 after confirm
+TP1 closest, TP3 furthest.
 """
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Set
@@ -41,7 +42,7 @@ def _mark(k: str) -> None:
     _sent.add(k)
 
 def _htf_bias() -> Optional[str]:
-    data = get_multi_timeframe_data()
+    data = get_multi_timeframe_data("XAUUSD")
     d1, h4 = data.get("1d"), data.get("4h")
     if d1 is None or d1.empty or h4 is None or h4.empty:
         return None
@@ -64,14 +65,15 @@ def _levels(bias: str, price: float, structure: float, wide: bool = False) -> Di
         stop = round(max(structure, price) + buf, 2)
     mid = (el + eh) / 2
     risk = abs(mid - stop)
+    # TP1 closest 1.5R, TP2 3R, TP3 furthest 5R
     if bias == "bullish":
-        t1 = round(mid + risk * 5.0, 2)
+        t1 = round(mid + risk * 1.5, 2)
         t2 = round(mid + risk * 3.0, 2)
-        t3 = round(mid + risk * 1.5, 2)
+        t3 = round(mid + risk * 5.0, 2)
     else:
-        t1 = round(mid - risk * 5.0, 2)
+        t1 = round(mid - risk * 1.5, 2)
         t2 = round(mid - risk * 3.0, 2)
-        t3 = round(mid - risk * 1.5, 2)
+        t3 = round(mid - risk * 5.0, 2)
     return {"zone": f"{el}-{eh}", "sl": str(stop), "tp1": str(t1), "tp2": str(t2), "tp3": str(t3)}
 
 def _short_pre(event, bias, levels, mins, tag) -> str:
@@ -93,37 +95,27 @@ def _short_post(event, bias, levels, conf) -> str:
         f"In: {levels['zone']}\n"
         f"SL: {levels['sl']}\n"
         f"TP1: {levels['tp1']} | TP2: {levels['tp2']} | TP3: {levels['tp3']}\n"
-        f"BE after TP3 · Risk 1%"
+        f"BE after TP1 · Risk 1%"
     )
-
-def _morning_window() -> bool:
-    """Once-daily slot: 07:00–07:20 SAST (05:00–05:20 UTC)."""
-    now = datetime.now(timezone.utc)
-    sast_now = now.astimezone(SAST)
-    return sast_now.hour == 7 and sast_now.minute < 20
 
 def _announce_once_today() -> None:
     """
-    One message per calendar day (SAST) about today's high-impact cluster,
-    or tomorrow's if nothing left today.
-    Only fires in the morning window + state key prevents repeats.
+    Once per SAST calendar day: announce today's (or next) high-impact cluster.
+    Fires on ANY run until the first event of the day — not only 07:00 window.
     """
-    if not _morning_window():
-        return
-
     now = datetime.now(timezone.utc)
     sast_today = now.astimezone(SAST).date()
     day_key = f"DAILY_NOTICE:{sast_today.isoformat()}"
     if _already(day_key):
         return
 
-    upcoming = fetch_upcoming_events(hours_ahead=48)
-    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=10)]
+    upcoming = fetch_upcoming_events(hours_ahead=72)
+    future = [e for e in upcoming if e["time"] > now + timedelta(minutes=5)]
     if not future:
-        _mark(day_key)
+        # nothing left today — still mark so we don't spam empty
+        # but allow if there are events later today we somehow missed filter
         return
 
-    # Prefer events on this SAST day; else next day
     today_ev = [e for e in future if e["time"].astimezone(SAST).date() == sast_today]
     pool = today_ev if today_ev else future
     first = pool[0]
@@ -139,8 +131,7 @@ def _announce_once_today() -> None:
 
     lean = _htf_bias()
     lean_txt = _gold(lean) if lean else "TBD closer to release"
-
-    when_label = "TODAY" if first["time"].astimezone(SAST).date() == sast_today else "TOMORROW"
+    when_label = "TODAY" if first["time"].astimezone(SAST).date() == sast_today else "NEXT"
 
     msg = (
         f"📅 {when_label}'S HIGH IMPACT\n"
@@ -151,7 +142,7 @@ def _announce_once_today() -> None:
     )
     if send_message(msg):
         _mark(day_key)
-        print("Daily event notice sent")
+        print("Daily event notice sent:", names)
 
 def generate_pre(event: Dict, tag: str) -> bool:
     k = _key(event, f"PRE{tag}")
@@ -160,7 +151,7 @@ def generate_pre(event: Dict, tag: str) -> bool:
     bias = _htf_bias()
     if not bias:
         return False
-    data = get_multi_timeframe_data()
+    data = get_multi_timeframe_data("XAUUSD")
     m15 = data.get("15m")
     if m15 is None or m15.empty:
         return False
@@ -180,7 +171,7 @@ def generate_post(event: Dict) -> bool:
     if _already(k):
         return False
 
-    data = get_multi_timeframe_data()
+    data = get_multi_timeframe_data("XAUUSD")
     m15, m5 = data.get("15m"), data.get("5m")
     if m15 is None or m15.empty:
         return False
@@ -248,15 +239,12 @@ def run_event_cycle() -> List[str]:
     for event in unique:
         mins = event.get("minutes_to_event", 0)
 
-        # ~30 min before — once (state key)
         if 25 <= mins <= 35 and generate_pre(event, "30M"):
             posted.append("PRE30")
 
-        # few minutes before — once
         if 3 <= mins <= 9 and generate_pre(event, "5M"):
             posted.append("PRE5")
 
-        # Train 2 — once only (state key), shortly after release
         if -40 <= mins <= 10 and generate_post(event):
             posted.append("POST")
 
