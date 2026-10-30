@@ -1,11 +1,40 @@
 {
-  "lastUpdated": null,
+  "lastUpdated": "2026-10-30T02:44:12.683505+00:00",
   "mode": "scored",
-  "pairs": ["XAUUSD", "BTCUSD"],
-  "maxSignalsPerDay": {"XAUUSD": 3, "BTCUSD": 3},
+  "pairs": [
+    "XAUUSD",
+    "BTCUSD"
+  ],
+  "maxSignalsPerDay": {
+    "XAUUSD": 3,
+    "BTCUSD": 3
+  },
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [],
-  "watchlist": [],
+  "watchlist": [
+    {
+      "pair": "BTCUSD",
+      "direction": "BUY",
+      "tier": "WATCHLIST",
+      "score": 73,
+      "model": "pullback_momentum",
+      "entry_zone": "76603.87-77368.6",
+      "stop_loss": "76450.0",
+      "tp1": "77951.46",
+      "tp2": "78594.94",
+      "tp3": "79667.41",
+      "rr": 1.8,
+      "invalidation": "H1 close below 76450.0",
+      "reasons": [
+        "BOS confirmed",
+        "Strong displacement",
+        "H4 alignment",
+        "FVG valid",
+        "Range expansion"
+      ],
+      "postedAt": "2026-10-30T02:44:12.683497+00:00"
+    }
+  ],
   "closed": [],
   "stats": {},
   "events": []
