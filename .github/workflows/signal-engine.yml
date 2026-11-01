@@ -2,10 +2,10 @@ name: Price Action Signal Engine
 
 on:
   schedule:
-    # Every 10 min weekdays
-    - cron: "*/10 * * * 1-5"
-    # Denser during London/NY overlap (UTC)
-    - cron: "*/5 12-16 * * 1-5"
+    # Every 5 min weekdays (catch moves early, not 10+ min late)
+    - cron: "*/5 * * * 1-5"
+    # Weekend BTC still scanned hourly
+    - cron: "0 * * * 0,6"
   workflow_dispatch:
 
 permissions:

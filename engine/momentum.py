@@ -1,6 +1,6 @@
 """
-Day-trading engine — XAUUSD (London/NY sessions) + BTCUSD (24/7).
-Separate from event trains. Short actionable signals.
+Day-trading engine — early entries only.
+Skips late/chased momentum. Gold: London/NY weekdays. BTC: 24/7.
 """
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -39,7 +39,6 @@ except Exception:
 
 
 def _in_gold_session() -> bool:
-    """Gold day trades: weekdays London + NY (UTC)."""
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
         return False
@@ -50,9 +49,7 @@ def _in_gold_session() -> bool:
 def _invalidation(setup: dict) -> str:
     d = setup.get("direction", "BUY")
     sl = setup.get("stop_loss")
-    if d == "BUY":
-        return f"close below {sl}"
-    return f"close above {sl}"
+    return f"close below {sl}" if d == "BUY" else f"close above {sl}"
 
 
 def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
@@ -62,14 +59,13 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     meta = SYMBOLS.get(symbol, {})
     mode = meta.get("session_mode", "fx")
 
-    # Gold: only weekday London/NY; crypto always
     if mode == "fx" and not _in_gold_session():
         print(f"{symbol}: outside London/NY session")
         return None
 
     max_daily = int(meta.get("max_daily", 4))
     if signals_posted_today(symbol) >= max_daily:
-        print(f"{symbol}: daily limit {max_daily}")
+        print(f"{symbol}: daily limit")
         return None
     if not cooldown_ok(symbol, SIGNAL_COOLDOWN_MINUTES):
         print(f"{symbol}: cooldown")
@@ -84,17 +80,16 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol, h1=h1)
     if not setup:
-        print(f"{symbol}: no score")
+        print(f"{symbol}: no early setup")
         return None
 
     print(
-        f"SCORED {symbol} {setup['tier']} {setup['direction']} "
-        f"{setup['score']} model={setup.get('model')} "
-        f"reasons={setup.get('reasons')}"
+        f"EARLY {symbol} {setup['tier']} {setup['direction']} "
+        f"{setup['score']} {setup.get('model')} {setup.get('reasons')}"
     )
 
     if is_duplicate(setup):
-        print(f"{symbol}: duplicate fingerprint")
+        print(f"{symbol}: duplicate")
         return None
 
     setup["invalidation"] = _invalidation(setup)
@@ -133,7 +128,7 @@ def run_momentum() -> bool:
                 try:
                     register_open_trade(setup)
                 except Exception as e:
-                    print("register trade", e)
+                    print("register", e)
             if record_signal:
                 try:
                     record_signal(setup, watchlist=False)
