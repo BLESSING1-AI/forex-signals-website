@@ -1,14 +1,16 @@
-"""Telegram — multi-symbol scored signals + invalidation line"""
+"""Telegram — short day-trade signals + event trains"""
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
 CHANNEL_FALLBACK = "-1004499950812"
+
 
 def _chat_id() -> str:
     cid = str(TELEGRAM_CHANNEL_ID or "").strip()
     if cid.lstrip("-").isdigit():
         return cid
     return CHANNEL_FALLBACK
+
 
 def send_message(text: str) -> bool:
     if not TELEGRAM_BOT_TOKEN:
@@ -42,72 +44,39 @@ def send_message(text: str) -> bool:
         print("Send failed:", e)
         return False
 
-def _invalidation_line(setup: dict) -> str:
-    inv = setup.get("invalidation")
-    if inv:
-        return f"⚠️ Invalid: {inv}"
-    d = setup.get("direction", "BUY")
-    sl = setup.get("stop_loss", "?")
-    if d == "BUY":
-        return f"⚠️ Invalid: close below SL {sl}"
-    return f"⚠️ Invalid: close above SL {sl}"
 
 def send_scored_signal(setup: dict) -> bool:
+    """Short day-trade format (same style as manual signals)."""
     pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     tier = setup.get("tier", "A")
     score = setup.get("score", 0)
-    icon = "🔥" if tier == "A+" else "🟢"
-    conf = "HIGH" if score >= 85 else "GOOD"
+    icon = "🔥" if tier == "A+" else "⚡"
     reasons = setup.get("reasons") or []
-    reason_txt = "; ".join(reasons[:5]) if reasons else setup.get("model", "")
-    c = setup.get("confirmations") or {}
+    why = reasons[0] if reasons else setup.get("model", "")
 
     lines = [
-        f"{icon} {pair} {d} — {tier} SETUP",
-        f"📊 Score: {score}/100",
-        f"📈 Bias: {str(setup.get('bias', d)).title()}",
-        f"⚡ Model: {setup.get('model', 'momentum')}",
-        f"🏗 Structure: {'BOS' if c.get('bos') else '—'}",
-        f"💧 Liquidity: {'Sweep' if c.get('sweep') else '—'}",
-        f"🧩 FVG: {'Yes' if c.get('fvg') else '—'}",
-        f"📍 Entry: {setup['entry_zone']}",
-        f"🛑 SL: {setup['stop_loss']}",
-        f"🎯 TP1: {setup['tp1']} | TP2: {setup['tp2']} | TP3: {setup['tp3']}",
-        f"📐 RR: 1:{setup.get('rr', '—')}",
-        f"🔥 Confidence: {conf}",
-        f"Risk 1%",
-        _invalidation_line(setup),
-        f"After TP1 → SL to BE",
-        f"Reason: {reason_txt}",
+        f"{icon} {pair} {d}",
+        f"In: {setup['entry_zone']}",
+        f"SL: {setup['stop_loss']}",
+        f"TP1: {setup['tp1']} | TP2: {setup['tp2']} | TP3: {setup['tp3']}",
+        f"Risk 1% · {tier} {score}",
     ]
+    if why:
+        lines.append(str(why))
     return send_message("\n".join(lines))
+
 
 def send_watchlist(setup: dict) -> bool:
     pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     score = setup.get("score", 0)
-    waiting = []
-    c = setup.get("confirmations") or {}
-    if not c.get("bos"):
-        waiting.append("BOS confirmation")
-    if not c.get("fvg"):
-        waiting.append("FVG / cleaner zone")
-    if setup.get("momentum_pts", 0) < 15:
-        waiting.append("Stronger continuation")
-    if not waiting:
-        waiting = ["Retest", "Strong continuation candle"]
+    return send_message(
+        f"👀 {pair} WATCH {d}\n"
+        f"Score {score} · waiting confirmation\n"
+        f"No entry yet"
+    )
 
-    lines = [
-        f"👀 {pair} WATCHLIST",
-        f"Developing {d} setup",
-        f"Score: {score}/100",
-        f"Waiting for:",
-    ]
-    for w in waiting[:4]:
-        lines.append(f"• {w}")
-    lines.append("No entry yet.")
-    return send_message("\n".join(lines))
 
 def format_signal(signal: dict) -> str:
     pair = signal.get("pair", "XAUUSD")
@@ -120,8 +89,10 @@ def format_signal(signal: dict) -> str:
         f"Risk 1%"
     )
 
+
 def send_signal(signal: dict) -> bool:
     return send_message(format_signal(signal))
+
 
 def send_momentum(signal: dict) -> bool:
     if "score" in signal:

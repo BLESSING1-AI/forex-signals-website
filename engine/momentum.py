@@ -1,4 +1,7 @@
-"""Scored momentum for XAUUSD, BTCUSD, ETHUSD."""
+"""
+Day-trading engine — XAUUSD (London/NY sessions) + BTCUSD (24/7).
+Separate from event trains. Short actionable signals.
+"""
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
@@ -13,7 +16,16 @@ from state_store import (
     is_duplicate,
     mark_fingerprint,
 )
-from config import SYMBOLS, SIGNAL_COOLDOWN_MINUTES, MIN_SIGNAL_SCORE, NEWS_BLACKOUT
+from config import (
+    SYMBOLS,
+    SIGNAL_COOLDOWN_MINUTES,
+    MIN_SIGNAL_SCORE,
+    NEWS_BLACKOUT,
+    LONDON_START,
+    LONDON_END,
+    NY_START,
+    NY_END,
+)
 
 try:
     from signals_writer import record_signal
@@ -26,45 +38,66 @@ except Exception:
     register_open_trade = None
 
 
+def _in_gold_session() -> bool:
+    """Gold day trades: weekdays London + NY (UTC)."""
+    now = datetime.now(timezone.utc)
+    if now.weekday() >= 5:
+        return False
+    h = now.hour
+    return (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END)
+
+
 def _invalidation(setup: dict) -> str:
     d = setup.get("direction", "BUY")
     sl = setup.get("stop_loss")
     if d == "BUY":
-        return f"H1 close below {sl}"
-    return f"H1 close above {sl}"
+        return f"close below {sl}"
+    return f"close above {sl}"
 
 
 def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     if NEWS_BLACKOUT:
         return None
-    wd = datetime.now(timezone.utc).weekday()
+
     meta = SYMBOLS.get(symbol, {})
-    if meta.get("session_mode") == "fx" and wd >= 5:
+    mode = meta.get("session_mode", "fx")
+
+    # Gold: only weekday London/NY; crypto always
+    if mode == "fx" and not _in_gold_session():
+        print(f"{symbol}: outside London/NY session")
         return None
 
-    max_daily = int(meta.get("max_daily", 3))
+    max_daily = int(meta.get("max_daily", 4))
     if signals_posted_today(symbol) >= max_daily:
-        print(f"{symbol}: daily limit")
+        print(f"{symbol}: daily limit {max_daily}")
         return None
     if not cooldown_ok(symbol, SIGNAL_COOLDOWN_MINUTES):
         print(f"{symbol}: cooldown")
         return None
 
     data = get_multi_timeframe_data(symbol)
-    d1, h4, m15, m5 = data.get("1d"), data.get("4h"), data.get("15m"), data.get("5m")
+    d1, h4, h1 = data.get("1d"), data.get("4h"), data.get("1h")
+    m15, m5 = data.get("15m"), data.get("5m")
     if any(x is None or (hasattr(x, "empty") and x.empty) for x in [h4, m15]):
+        print(f"{symbol}: missing bars")
         return None
 
-    setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol)
+    setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol, h1=h1)
     if not setup:
         print(f"{symbol}: no score")
         return None
+
+    print(
+        f"SCORED {symbol} {setup['tier']} {setup['direction']} "
+        f"{setup['score']} model={setup.get('model')} "
+        f"reasons={setup.get('reasons')}"
+    )
+
     if is_duplicate(setup):
-        print(f"{symbol}: duplicate")
+        print(f"{symbol}: duplicate fingerprint")
         return None
 
     setup["invalidation"] = _invalidation(setup)
-    print(f"SCORED {symbol} {setup['tier']} {setup['direction']} {setup['score']}")
     return setup
 
 
@@ -107,4 +140,5 @@ def run_momentum() -> bool:
                 except Exception as e:
                     print("writer", e)
             any_trade = True
+            print(f"DAY TRADE SENT {symbol} {setup['direction']} {setup['score']}")
     return any_trade
