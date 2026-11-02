@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-30T02:44:12.683505+00:00",
+  "lastUpdated": "2026-11-02T06:08:45.463263+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -12,6 +12,27 @@
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [],
   "watchlist": [
+    {
+      "pair": "XAUUSD",
+      "direction": "BUY",
+      "tier": "WATCHLIST",
+      "score": 59,
+      "model": "pullback",
+      "entry_zone": "3904.22-3922.97",
+      "stop_loss": "3889.22",
+      "tp1": "3950.16",
+      "tp2": "3981.84",
+      "tp3": "4023.28",
+      "rr": 1.5,
+      "invalidation": "close below 3889.22",
+      "reasons": [
+        "BOS",
+        "At structure",
+        "Directional",
+        "H4"
+      ],
+      "postedAt": "2026-11-02T06:08:45.463257+00:00"
+    },
     {
       "pair": "BTCUSD",
       "direction": "BUY",
