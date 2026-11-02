@@ -1,6 +1,6 @@
 """
-Day-trading engine — early entries only.
-Skips late/chased momentum. Gold: London/NY weekdays. BTC: 24/7.
+Day-trading + momentum breakouts.
+Gold: weekdays 05–21 UTC (07:00–23:00 SAST). BTC: always.
 """
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -22,8 +22,6 @@ from config import (
     MIN_SIGNAL_SCORE,
     NEWS_BLACKOUT,
     LONDON_START,
-    LONDON_END,
-    NY_START,
     NY_END,
 )
 
@@ -43,7 +41,8 @@ def _in_gold_session() -> bool:
     if now.weekday() >= 5:
         return False
     h = now.hour
-    return (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END)
+    # Continuous window morning → NY close
+    return LONDON_START <= h < NY_END
 
 
 def _invalidation(setup: dict) -> str:
@@ -60,10 +59,10 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     mode = meta.get("session_mode", "fx")
 
     if mode == "fx" and not _in_gold_session():
-        print(f"{symbol}: outside London/NY session")
+        print(f"{symbol}: outside session ({LONDON_START}-{NY_END} UTC)")
         return None
 
-    max_daily = int(meta.get("max_daily", 4))
+    max_daily = int(meta.get("max_daily", 5))
     if signals_posted_today(symbol) >= max_daily:
         print(f"{symbol}: daily limit")
         return None
@@ -80,11 +79,11 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol, h1=h1)
     if not setup:
-        print(f"{symbol}: no early setup")
+        print(f"{symbol}: no setup")
         return None
 
     print(
-        f"EARLY {symbol} {setup['tier']} {setup['direction']} "
+        f"SETUP {symbol} {setup['tier']} {setup['direction']} "
         f"{setup['score']} {setup.get('model')} {setup.get('reasons')}"
     )
 
@@ -135,5 +134,5 @@ def run_momentum() -> bool:
                 except Exception as e:
                     print("writer", e)
             any_trade = True
-            print(f"DAY TRADE SENT {symbol} {setup['direction']} {setup['score']}")
+            print(f"SENT {symbol} {setup['direction']} {setup['score']}")
     return any_trade
