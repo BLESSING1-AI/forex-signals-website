@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-03T10:43:51.090319+00:00",
+  "lastUpdated": "2026-11-03T18:04:40.499809+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -34,6 +34,27 @@
     }
   ],
   "watchlist": [
+    {
+      "pair": "XAUUSD",
+      "direction": "BUY",
+      "tier": "WATCHLIST",
+      "score": 59,
+      "model": "fvg_pullback",
+      "entry_zone": "3928.13-3936.1",
+      "stop_loss": "3913.13",
+      "tp1": "3960.59",
+      "tp2": "3985.27",
+      "tp3": "4017.55",
+      "rr": 1.5,
+      "invalidation": "close below 3913.13",
+      "reasons": [
+        "Fresh break",
+        "At structure",
+        "Directional",
+        "FVG"
+      ],
+      "postedAt": "2026-11-03T18:04:40.499806+00:00"
+    },
     {
       "pair": "XAUUSD",
       "direction": "SELL",
