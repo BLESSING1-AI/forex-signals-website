@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-05T11:37:15.907105+00:00",
+  "lastUpdated": "2026-11-05T18:57:44.013849+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -11,6 +11,29 @@
   },
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [
+    {
+      "pair": "XAUUSD",
+      "direction": "BUY",
+      "tier": "A",
+      "score": 79,
+      "model": "fvg_pullback",
+      "entry_zone": "4062.81-4098.95",
+      "stop_loss": "4047.81",
+      "tp1": "4130.49",
+      "tp2": "4173.48",
+      "tp3": "4229.7",
+      "rr": 1.5,
+      "invalidation": "close below 4047.81",
+      "reasons": [
+        "BOS",
+        "Engulf",
+        "At structure",
+        "Breakout forming",
+        "H4",
+        "FVG"
+      ],
+      "postedAt": "2026-11-05T18:57:44.013843+00:00"
+    },
     {
       "pair": "XAUUSD",
       "direction": "BUY",
