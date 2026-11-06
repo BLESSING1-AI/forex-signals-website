@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-05T23:57:16.747013+00:00",
+  "lastUpdated": "2026-11-06T05:20:59.773832+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -234,6 +234,15 @@
       "direction": "BUY",
       "outcome": "SL",
       "result_r": -1.0,
+      "entry": 4080.88,
+      "exit": 4047.81,
+      "closed_at": "2026-11-06T05:20:59.773809+00:00"
+    },
+    {
+      "pair": "XAUUSD",
+      "direction": "BUY",
+      "outcome": "SL",
+      "result_r": -1.0,
       "entry": 4118.365,
       "exit": 4097.2,
       "closed_at": "2026-11-05T23:57:16.746993+00:00"
@@ -249,7 +258,7 @@
     }
   ],
   "stats": {
-    "closed": 2,
+    "closed": 3,
     "wins": 0,
     "win_rate": 0.0,
     "avg_r": -1.0
