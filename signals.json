@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-11T00:35:47.143007+00:00",
+  "lastUpdated": "2026-11-11T07:02:47.216983+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -274,6 +274,26 @@
     }
   ],
   "watchlist": [
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "tier": "WATCHLIST",
+      "score": 57,
+      "model": "continuation",
+      "entry_zone": "73484.21-73877.63",
+      "stop_loss": "73977.63",
+      "tp1": "73235.86",
+      "tp2": "72850.13",
+      "tp3": "72345.73",
+      "rr": 1.5,
+      "invalidation": "close above 73977.63",
+      "reasons": [
+        "Fresh break",
+        "Directional",
+        "H4"
+      ],
+      "postedAt": "2026-11-11T07:02:47.216977+00:00"
+    },
     {
       "pair": "BTCUSD",
       "direction": "SELL",
