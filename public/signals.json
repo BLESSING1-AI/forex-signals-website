@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-10T20:03:49.247642+00:00",
+  "lastUpdated": "2026-11-11T00:35:47.143007+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -280,6 +280,26 @@
       "tier": "WATCHLIST",
       "score": 53,
       "model": "pullback",
+      "entry_zone": "73618.91-73747.67",
+      "stop_loss": "73847.67",
+      "tp1": "73436.72",
+      "tp2": "73223.03",
+      "tp3": "72943.58",
+      "rr": 1.5,
+      "invalidation": "close above 73847.67",
+      "reasons": [
+        "At structure",
+        "Directional",
+        "H4+H1"
+      ],
+      "postedAt": "2026-11-11T00:35:47.143002+00:00"
+    },
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "tier": "WATCHLIST",
+      "score": 53,
+      "model": "pullback",
       "entry_zone": "75163.68-75174.96",
       "stop_loss": "75274.96",
       "tp1": "75010.86",
@@ -462,6 +482,15 @@
   ],
   "closed": [
     {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "outcome": "SL",
+      "result_r": -1.0,
+      "entry": 73277.51999999999,
+      "exit": 73591.99,
+      "closed_at": "2026-11-11T00:35:45.066244+00:00"
+    },
+    {
       "pair": "XAUUSD",
       "direction": "BUY",
       "outcome": "SL",
@@ -553,10 +582,10 @@
     }
   ],
   "stats": {
-    "closed": 10,
+    "closed": 11,
     "wins": 4,
-    "win_rate": 40.0,
-    "avg_r": 1.2
+    "win_rate": 36.4,
+    "avg_r": 1.0
   },
   "events": []
 }
