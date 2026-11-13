@@ -1,9 +1,7 @@
 """
-Day-trade + momentum breakout scoring.
-Two valid paths:
-  1) Pullback to structure + rejection
-  2) Momentum breakout (fresh strong displacement + HTF align) — catch the move
-Only skip if move is extreme AND already exhausted (last bars reversing).
+Scoring:
+- BTC: momentum + breakout OK
+- Gold: pullback / structure only, H4 required, wide SL, no thin breakouts
 """
 from typing import Dict, Any, Optional, List
 import pandas as pd
@@ -39,9 +37,9 @@ def _session_points(mode: str) -> int:
     h = datetime.now(timezone.utc).hour
     if mode == "crypto":
         return 5
-    if LONDON_START <= h < NY_END:
+    if (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END):
         return 5
-    return 2
+    return 0
 
 
 def _fresh_break(df: pd.DataFrame, direction: str) -> bool:
@@ -65,6 +63,25 @@ def _fresh_break(df: pd.DataFrame, direction: str) -> bool:
     return lo < sl and price < sl * 1.001
 
 
+def _h1_structure(h1: Optional[pd.DataFrame], direction: str) -> Optional[float]:
+    if h1 is None or h1.empty or len(h1) < 20:
+        return None
+    return find_nearby_structure_level(h1, direction)
+
+
+def _atr(df: pd.DataFrame, n: int = 14) -> float:
+    if df is None or len(df) < n + 1:
+        return 0.0
+    h = df["high"].astype(float)
+    l = df["low"].astype(float)
+    c = df["close"].astype(float)
+    tr = pd.concat(
+        [(h - l), (h - c.shift(1)).abs(), (l - c.shift(1)).abs()],
+        axis=1,
+    ).max(axis=1)
+    return float(tr.tail(n).mean())
+
+
 def score_setup(
     d1: pd.DataFrame,
     h4: pd.DataFrame,
@@ -84,6 +101,10 @@ def score_setup(
     vol_abs_mid = float(meta["vol_abs_mid"])
     decimals = int(meta.get("decimals", 2))
     session_mode = meta.get("session_mode", "fx")
+    is_gold = symbol == "XAUUSD"
+    require_htf = bool(meta.get("require_htf", is_gold))
+    prefer_pullback = bool(meta.get("prefer_pullback", is_gold))
+    allow_breakout = bool(meta.get("allow_breakout", not is_gold))
 
     if m15 is None or m15.empty or h4 is None or h4.empty:
         return None
@@ -96,49 +117,64 @@ def score_setup(
     h1_bias = determine_bias(h1) if h1 is not None and not h1.empty else "neutral"
     m15_bias = determine_bias(m15)
 
-    net2, rng2 = displacement_metrics(tf, 2)
-    net3, rng3 = displacement_metrics(tf, 3)
-    net5, rng5 = displacement_metrics(tf, 5)
-    net8, _ = displacement_metrics(tf, 8)
-    net_m15, _ = displacement_metrics(m15, 4)
+    # Gold MUST have clear H4 bias
+    if require_htf and h4_bias not in ("bullish", "bearish"):
+        print(f"{symbol}: no H4 bias — skip")
+        return None
 
-    # Direction: prefer HTF, else short-term displacement
     if h4_bias in ("bullish", "bearish"):
         direction = h4_bias
     elif h1_bias in ("bullish", "bearish"):
         direction = h1_bias
-    elif abs(net3) >= disp_ok * 0.8:
-        direction = "bullish" if net3 > 0 else "bearish"
-    elif m15_bias in ("bullish", "bearish"):
-        direction = m15_bias
-    elif abs(net5) >= disp_ok * 0.5:
-        direction = "bullish" if net5 > 0 else "bearish"
     else:
+        net5, _ = displacement_metrics(tf, 5)
+        if abs(net5) < disp_ok:
+            return None
+        direction = "bullish" if net5 > 0 else "bearish"
+
+    # Gold: H1 should not strongly fight H4
+    if is_gold and h1_bias in ("bullish", "bearish") and h1_bias != direction:
+        print(f"{symbol}: H1 fights H4 — skip")
         return None
 
     dir_label = "BUY" if direction == "bullish" else "SELL"
+
+    net2, rng2 = displacement_metrics(tf, 2)
+    net3, rng3 = displacement_metrics(tf, 3)
+    net5, rng5 = displacement_metrics(tf, 5)
     signed2 = net2 if direction == "bullish" else -net2
     signed3 = net3 if direction == "bullish" else -net3
     signed5 = net5 if direction == "bullish" else -net5
-    signed8 = net8 if direction == "bullish" else -net8
-    signed_m15 = net_m15 if direction == "bullish" else -net_m15
 
-    structure = find_nearby_structure_level(m15, direction)
+    # Structure: prefer H1 swing for gold (wider, more meaningful)
+    structure = _h1_structure(h1, direction) if is_gold else None
+    if structure is None:
+        structure = find_nearby_structure_level(m15, direction)
     if structure is None:
         structure = (
-            float(m15["low"].tail(25).min())
+            float(m15["low"].tail(30).min())
             if direction == "bullish"
-            else float(m15["high"].tail(25).max())
+            else float(m15["high"].tail(30).max())
         )
 
-    # Exhaustion only: huge move AND last candle opposite (buying the top)
+    atr15 = _atr(m15, 14)
+    # Dynamic buffer: at least config buffer, scale with ATR for gold
+    dyn_buf = sl_buffer
+    if is_gold and atr15 > 0:
+        dyn_buf = max(sl_buffer, atr15 * 0.9)
+
     last_body = float(tf["close"].iloc[-1] - tf["open"].iloc[-1])
     last_against = (direction == "bullish" and last_body < 0) or (
         direction == "bearish" and last_body > 0
     )
-    exhausted = signed5 >= disp_strong * 1.4 and last_against
-    if exhausted:
-        print(f"{symbol}: exhausted spike — skip")
+    if signed5 >= disp_strong * 1.3 and last_against:
+        print(f"{symbol}: exhausted — skip")
+        return None
+
+    # Gold: skip if already extended far from structure (chase)
+    dist = abs(price - structure)
+    if is_gold and dist > dyn_buf * 2.2 and signed5 >= disp_solid:
+        print(f"{symbol}: extended from structure — skip chase")
         return None
 
     fresh = _fresh_break(tf, direction) or _fresh_break(m15, direction)
@@ -149,185 +185,179 @@ def score_setup(
     engulf = detect_engulfing(tf) or detect_engulfing(m15)
     pin = detect_pin_bar(tf) or detect_pin_bar(m15)
 
-    near = abs(price - structure) <= max(sl_buffer * 2.5, abs(price - structure) * 0 + sl_buffer * 2.5)
-    # recompute near properly
-    near = abs(price - structure) <= sl_buffer * 2.8
+    near = abs(price - structure) <= dyn_buf * 2.5
 
-    # Momentum breakout active?
     breakout = (
         (signed2 >= disp_ok or signed3 >= disp_solid * 0.7)
-        and signed5 < disp_strong * 1.6  # not absurdly done
+        and signed5 < disp_strong * 1.5
         and (fresh or bos == direction or signed3 >= disp_solid)
     )
+
+    # Gold: no pure breakout entries — need structure touch / rejection / sweep
+    if is_gold and prefer_pullback:
+        quality = near or sweep == direction or engulf == direction or pin == direction or (
+            fvg and fvg.get("direction") == direction and near
+        )
+        if not quality:
+            # Allow only if strong CHoCH + H4 + not extended
+            if not (choch == direction and h4_bias == direction and dist <= dyn_buf * 3):
+                print(f"{symbol}: no pullback/rejection quality — skip")
+                return None
+        breakout = False  # force non-breakout model for gold
+
+    if not allow_breakout:
+        breakout = False
 
     reasons: List[str] = []
     score = 0
 
-    # Structure (max 22)
     struct_pts = 0
-    if fresh:
-        struct_pts += 14
-        reasons.append("Fresh break")
-    elif bos == direction:
-        struct_pts += 10
-        reasons.append("BOS")
-    if choch == direction:
-        struct_pts += 8
-        reasons.append("CHoCH")
-    if engulf == direction:
-        struct_pts += 9
-        reasons.append("Engulf")
-    if pin == direction:
-        struct_pts += 8
-        reasons.append("Pin")
     if near:
-        struct_pts += 6
+        struct_pts += 10
         reasons.append("At structure")
     if sweep == direction:
-        struct_pts += 8
+        struct_pts += 12
         reasons.append("Sweep")
-    struct_pts = min(22, struct_pts)
+    if engulf == direction:
+        struct_pts += 10
+        reasons.append("Engulf")
+    if pin == direction:
+        struct_pts += 10
+        reasons.append("Pin")
+    if choch == direction:
+        struct_pts += 10
+        reasons.append("CHoCH")
+    if fresh and not is_gold:
+        struct_pts += 12
+        reasons.append("Fresh break")
+    elif bos == direction and not is_gold:
+        struct_pts += 8
+        reasons.append("BOS")
+    if fvg and fvg.get("direction") == direction:
+        struct_pts += 6
+        reasons.append("FVG")
+    struct_pts = min(24, struct_pts)
     score += struct_pts
 
-    # Momentum (max 22) — reward real strength
     mom_pts = 0
-    if breakout and signed3 >= disp_solid:
-        mom_pts = 22
+    if not is_gold and breakout and signed3 >= disp_solid:
+        mom_pts = 20
         reasons.append("Momentum breakout")
-    elif breakout:
-        mom_pts = 18
-        reasons.append("Breakout forming")
-    elif signed2 >= disp_ok and signed5 < disp_strong * 1.2:
-        mom_pts = 16
+    elif signed2 >= disp_ok * 0.8 and signed5 < disp_strong * 1.1:
+        mom_pts = 14
         reasons.append("Early impulse")
-    elif signed5 >= disp_ok or signed_m15 >= disp_ok:
-        mom_pts = 12
+    elif signed5 >= disp_ok * 0.6:
+        mom_pts = 10
         reasons.append("Directional")
     elif near and (engulf == direction or pin == direction):
         mom_pts = 12
         reasons.append("Rejection")
-    elif signed5 > 0:
-        mom_pts = 6
+    else:
+        mom_pts = 4
     score += mom_pts
 
-    # HTF (max 18)
     htf_pts = 0
     if h4_bias == direction and h1_bias == direction:
-        htf_pts = 18
+        htf_pts = 20
         reasons.append("H4+H1")
     elif h4_bias == direction:
         htf_pts = 14
         reasons.append("H4")
     elif h1_bias == direction:
-        htf_pts = 12
+        htf_pts = 10
         reasons.append("H1")
     elif d1_bias == direction:
-        htf_pts = 8
+        htf_pts = 6
         reasons.append("D1")
-    elif h4_bias != "neutral" and h4_bias != direction:
-        # Counter-trend breakout needs stronger mom
-        if mom_pts >= 18:
-            htf_pts = 4
-            reasons.append("Counter HTF")
-        else:
-            htf_pts = 0
-            reasons.append("HTF oppose")
-    else:
-        htf_pts = 5
     score += htf_pts
 
-    if htf_pts == 0 and mom_pts < 18:
+    if require_htf and htf_pts < 14:
+        print(f"{symbol}: weak HTF points — skip")
         return None
 
-    fvg_pts = 0
-    fvg_ok = bool(fvg and fvg["direction"] == direction)
-    if fvg_ok:
-        fvg_pts = 8
-        reasons.append("FVG")
-    score += fvg_pts
+    fvg_ok = bool(fvg and fvg.get("direction") == direction)
+    score += 6 if fvg_ok else 0
 
-    vol_pts = 0
     avg_rng = float((m15["high"] - m15["low"]).tail(20).mean()) or 1
-    if rng3 >= avg_rng * 1.1 or rng3 >= vol_abs_mid * 0.45:
-        vol_pts = 6
-    elif rng2 > 0:
-        vol_pts = 3
-    score += vol_pts
+    if rng3 >= avg_rng * 1.1 or rng3 >= vol_abs_mid * 0.5:
+        score += 5
 
-    sess = _session_points(session_mode)
-    score += sess
+    score += _session_points(session_mode)
 
-    # Need some trigger
-    if mom_pts < 6 and struct_pts < 8:
+    if is_gold and struct_pts < 12:
+        print(f"{symbol}: weak structure pts {struct_pts}")
         return None
 
-    # Levels — for breakout use tighter structure from recent swing
+    # --- Levels: gold uses wide structure SL ---
     tick = max(price * 0.00005, 0.5) if symbol == "BTCUSD" else 0.5
     if direction == "bullish":
-        if breakout and not near:
-            el = round(price - tick * 3, decimals)
-            eh = round(price + tick * 2, decimals)
-            stop = round(min(float(tf["low"].tail(5).min()), el) - sl_buffer * 0.7, decimals)
-        else:
-            el = round(min(structure, price) - tick, decimals)
-            eh = round(price + tick * 2, decimals)
-            stop = round(min(structure, el) - sl_buffer, decimals)
+        el = round(min(structure, price) - tick, decimals)
+        eh = round(min(price + tick * 2, structure + dyn_buf * 0.6), decimals)
+        if el > eh:
+            el, eh = round(price - tick * 2, decimals), round(price + tick, decimals)
+        # SL beyond structure + buffer (room for spike)
+        stop = round(min(structure, el) - dyn_buf, decimals)
         if stop >= el:
-            stop = round(el - sl_buffer, decimals)
+            stop = round(el - dyn_buf, decimals)
     else:
-        if breakout and not near:
-            el = round(price - tick * 2, decimals)
-            eh = round(price + tick * 3, decimals)
-            stop = round(max(float(tf["high"].tail(5).max()), eh) + sl_buffer * 0.7, decimals)
-        else:
-            el = round(price - tick * 2, decimals)
-            eh = round(max(structure, price) + tick, decimals)
-            stop = round(max(structure, eh) + sl_buffer, decimals)
+        el = round(max(price - tick * 2, structure - dyn_buf * 0.6), decimals)
+        eh = round(max(structure, price) + tick, decimals)
+        if el > eh:
+            el, eh = round(price - tick, decimals), round(price + tick * 2, decimals)
+        stop = round(max(structure, eh) + dyn_buf, decimals)
         if stop <= eh:
-            stop = round(eh + sl_buffer, decimals)
+            stop = round(eh + dyn_buf, decimals)
 
     mid = (el + eh) / 2.0
     risk = abs(mid - stop)
     if risk < risk_min:
-        stop = round(mid - risk_min, decimals) if direction == "bullish" else round(mid + risk_min, decimals)
+        stop = (
+            round(mid - risk_min, decimals)
+            if direction == "bullish"
+            else round(mid + risk_min, decimals)
+        )
         risk = abs(mid - stop)
     if risk > risk_max:
         stop = (
-            round(mid - risk_max * 0.4, decimals)
+            round(mid - risk_max * 0.5, decimals)
             if direction == "bullish"
-            else round(mid + risk_max * 0.4, decimals)
+            else round(mid + risk_max * 0.5, decimals)
         )
         risk = abs(mid - stop)
 
-    r1 = max(MIN_RR, 1.5)
+    # Gold: slightly more conservative TP1 (1.6R), still scale out
+    r1 = max(MIN_RR, 1.8 if is_gold else 1.6)
     if direction == "bullish":
         tp1 = round(mid + risk * r1, decimals)
-        tp2 = round(mid + risk * 2.8, decimals)
-        tp3 = round(mid + risk * 4.5, decimals)
+        tp2 = round(mid + risk * 3.0, decimals)
+        tp3 = round(mid + risk * 5.0, decimals)
     else:
         tp1 = round(mid - risk * r1, decimals)
-        tp2 = round(mid - risk * 2.8, decimals)
-        tp3 = round(mid - risk * 4.5, decimals)
+        tp2 = round(mid - risk * 3.0, decimals)
+        tp3 = round(mid - risk * 5.0, decimals)
 
     rr = round(abs(tp1 - mid) / risk, 2) if risk else 0.0
     if rr + 1e-9 < MIN_RR:
         return None
-    score += 6 if rr >= 1.5 else 0
+    score += 6
 
     nb = max(0, min(int(news_bonus), NEWS_SCORE_BONUS_MAX))
     score += nb
     score = int(max(0, min(100, score)))
 
+    min_sym = int(meta.get("min_score", MIN_SIGNAL_SCORE))
     if score >= A_PLUS_SCORE:
         tier, action = "A+", "signal"
-    elif score >= MIN_SIGNAL_SCORE:
+    elif score >= min_sym:
         tier, action = "A", "signal"
     elif score >= WATCHLIST_SCORE:
         tier, action = "WATCHLIST", "watchlist"
     else:
         return None
 
-    model = "momentum_breakout" if breakout else ("pullback" if near else "continuation")
+    model = "gold_pullback" if is_gold else ("momentum_breakout" if breakout else "continuation")
+    if near and not is_gold:
+        model = "pullback"
     if sweep == direction:
         model = "sweep"
     if fvg_ok and near:
@@ -354,13 +384,13 @@ def score_setup(
         "momentum_pts": mom_pts,
         "struct_pts": struct_pts,
         "confirmations": {
-            "bos": bos,
-            "fresh": fresh,
-            "breakout": breakout,
+            "near": near,
             "sweep": sweep,
-            "fvg": fvg_ok,
             "engulf": engulf,
             "pin": pin,
-            "near": near,
+            "choch": choch,
+            "fvg": fvg_ok,
+            "h4": h4_bias,
+            "h1": h1_bias,
         },
     }

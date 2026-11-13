@@ -1,6 +1,7 @@
 """
-Day-trading + momentum breakouts.
-Gold: weekdays 05–21 UTC (07:00–23:00 SAST). BTC: always.
+Day-trading engine.
+Gold: strict London/NY pullback quality (few signals, wide SL).
+BTC: momentum allowed, more frequent.
 """
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -22,6 +23,8 @@ from config import (
     MIN_SIGNAL_SCORE,
     NEWS_BLACKOUT,
     LONDON_START,
+    LONDON_END,
+    NY_START,
     NY_END,
 )
 
@@ -37,12 +40,12 @@ except Exception:
 
 
 def _in_gold_session() -> bool:
+    """Gold only in London or NY — avoid Asia chop."""
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
         return False
     h = now.hour
-    # Continuous window morning → NY close
-    return LONDON_START <= h < NY_END
+    return (LONDON_START <= h < LONDON_END) or (NY_START <= h < NY_END)
 
 
 def _invalidation(setup: dict) -> str:
@@ -59,14 +62,18 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     mode = meta.get("session_mode", "fx")
 
     if mode == "fx" and not _in_gold_session():
-        print(f"{symbol}: outside session ({LONDON_START}-{NY_END} UTC)")
+        print(f"{symbol}: outside London/NY")
         return None
 
-    max_daily = int(meta.get("max_daily", 5))
+    max_daily = int(meta.get("max_daily", 3))
     if signals_posted_today(symbol) >= max_daily:
-        print(f"{symbol}: daily limit")
+        print(f"{symbol}: daily limit {max_daily}")
         return None
-    if not cooldown_ok(symbol, SIGNAL_COOLDOWN_MINUTES):
+
+    cd = SIGNAL_COOLDOWN_MINUTES
+    if symbol == "XAUUSD":
+        cd = max(cd, 90)  # gold: wait longer between signals
+    if not cooldown_ok(symbol, cd):
         print(f"{symbol}: cooldown")
         return None
 
@@ -81,6 +88,13 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     if not setup:
         print(f"{symbol}: no setup")
         return None
+
+    # Per-symbol min score (gold stricter)
+    min_sc = int(meta.get("min_score", MIN_SIGNAL_SCORE))
+    if setup.get("action") == "signal" and setup.get("score", 0) < min_sc:
+        print(f"{symbol}: score {setup['score']} < min {min_sc} → watchlist")
+        setup["action"] = "watchlist"
+        setup["tier"] = "WATCHLIST"
 
     print(
         f"SETUP {symbol} {setup['tier']} {setup['direction']} "
@@ -116,7 +130,12 @@ def run_momentum() -> bool:
                         print("writer", e)
             continue
 
-        if setup.get("action") != "signal" or setup["score"] < MIN_SIGNAL_SCORE:
+        if setup.get("action") != "signal":
+            continue
+
+        meta = SYMBOLS.get(symbol, {})
+        min_sc = int(meta.get("min_score", MIN_SIGNAL_SCORE))
+        if setup["score"] < min_sc:
             continue
 
         if send_scored_signal(setup):
