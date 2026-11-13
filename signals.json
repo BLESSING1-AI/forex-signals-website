@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-13T03:37:09.187347+00:00",
+  "lastUpdated": "2026-11-13T11:30:03.691422+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -11,6 +11,28 @@
   },
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [
+    {
+      "pair": "XAUUSD",
+      "direction": "SELL",
+      "tier": "A",
+      "score": 71,
+      "model": "fvg_pullback",
+      "entry_zone": "3874.92-3891.62",
+      "stop_loss": "3906.62",
+      "tp1": "3848.24",
+      "tp2": "3817.89",
+      "tp3": "3778.2",
+      "rr": 1.5,
+      "invalidation": "close above 3906.62",
+      "reasons": [
+        "Fresh break",
+        "At structure",
+        "Directional",
+        "H4",
+        "FVG"
+      ],
+      "postedAt": "2026-11-13T11:30:02.801718+00:00"
+    },
     {
       "pair": "BTCUSD",
       "direction": "SELL",
@@ -379,6 +401,27 @@
     }
   ],
   "watchlist": [
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "tier": "WATCHLIST",
+      "score": 61,
+      "model": "sweep",
+      "entry_zone": "69204.27-69430.03",
+      "stop_loss": "69530.03",
+      "tp1": "68997.83",
+      "tp2": "68721.09",
+      "tp3": "68359.19",
+      "rr": 1.5,
+      "invalidation": "close above 69530.03",
+      "reasons": [
+        "At structure",
+        "Sweep",
+        "Early impulse",
+        "H4"
+      ],
+      "postedAt": "2026-11-13T11:30:03.691417+00:00"
+    },
     {
       "pair": "BTCUSD",
       "direction": "SELL",
