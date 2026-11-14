@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-14T03:40:43.889157+00:00",
+  "lastUpdated": "2026-11-14T04:01:54.750783+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -737,6 +737,15 @@
       "direction": "SELL",
       "outcome": "TP3",
       "result_r": 5.0,
+      "entry": 68351.67,
+      "exit": 67693.32,
+      "closed_at": "2026-11-14T04:01:54.750761+00:00"
+    },
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "outcome": "TP3",
+      "result_r": 5.0,
       "entry": 69039.68,
       "exit": 68381.08,
       "closed_at": "2026-11-13T23:53:44.584810+00:00"
@@ -887,10 +896,10 @@
     }
   ],
   "stats": {
-    "closed": 17,
-    "wins": 9,
-    "win_rate": 52.9,
-    "avg_r": 1.97
+    "closed": 18,
+    "wins": 10,
+    "win_rate": 55.6,
+    "avg_r": 2.14
   },
   "events": []
 }
