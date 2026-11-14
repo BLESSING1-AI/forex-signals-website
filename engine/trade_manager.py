@@ -1,5 +1,6 @@
 """
-Trade lifecycle: TP1 (closest) → BE, TP2, TP3 (furthest) full exit, SL.
+Trade lifecycle: TP1 (closest) → BE, TP2, TP3 (furthest).
+When price skips levels (slow checks), report each level once with LEVEL price, not only last print.
 """
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
@@ -27,11 +28,12 @@ def register_open_trade(setup: Dict[str, Any]) -> None:
     data = _load_raw()
     opens = data.get("open_trades") or []
     tid = f"{setup.get('pair')}-{setup.get('direction')}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
+    entry = _mid_entry(str(setup.get("entry_zone", "0")))
     trade = {
         "id": tid,
         "pair": setup.get("pair", "XAUUSD"),
         "direction": setup.get("direction", "BUY"),
-        "entry": _mid_entry(str(setup.get("entry_zone", "0"))),
+        "entry": entry,
         "entry_zone": setup.get("entry_zone"),
         "sl": float(setup.get("stop_loss", 0)),
         "original_sl": float(setup.get("stop_loss", 0)),
@@ -98,10 +100,13 @@ def manage_open_trades() -> List[str]:
             continue
 
         d = t["direction"]
+        entry = float(t["entry"])
+
+        # SL (after BE, SL = entry)
         hit_sl = price <= t["sl"] if d == "BUY" else price >= t["sl"]
         if hit_sl:
-            r = _r_multiple(t, t["sl"])
-            outcome = "BE" if t.get("be") and abs(r) < 0.2 else "SL"
+            r = _r_multiple(t, float(t["sl"]))
+            outcome = "BE" if t.get("be") and abs(r) < 0.25 else "SL"
             msg = (
                 f"{'✅ BE EXIT' if outcome == 'BE' else '❌ SL HIT'} · {pair} {d}\n"
                 f"Price ~{round(price, 2)}\n"
@@ -122,15 +127,16 @@ def manage_open_trades() -> List[str]:
                     print("closed writer", e)
             continue
 
-        # TP1 closest → BE
+        # Ordered TP catch-up: mark each level once, message uses LEVEL price
+        # so numbering stays TP1 → TP2 → TP3 even if price already past all
         if not t.get("tp1_hit") and _hit(d, price, t["tp1"]):
             t["tp1_hit"] = True
             t["be"] = True
-            t["sl"] = t["entry"]
+            t["sl"] = entry
             msg = (
                 f"🎯 TP1 HIT · {pair} {d}\n"
-                f"Price ~{round(price, 2)}\n"
-                f"Move SL → BE ({round(t['entry'], 2)})\n"
+                f"TP1: {round(t['tp1'], 2)} · Now ~{round(price, 2)}\n"
+                f"SL → BE ({round(entry, 2)})\n"
                 f"Runner → TP2 / TP3"
             )
             send_message(msg)
@@ -145,10 +151,10 @@ def manage_open_trades() -> List[str]:
             t["tp2_hit"] = True
             if not t.get("be"):
                 t["be"] = True
-                t["sl"] = t["entry"]
+                t["sl"] = entry
             msg = (
                 f"🎯 TP2 HIT · {pair} {d}\n"
-                f"Price ~{round(price, 2)}\n"
+                f"TP2: {round(t['tp2'], 2)} · Now ~{round(price, 2)}\n"
                 f"Partial · runner → TP3"
             )
             send_message(msg)
@@ -159,7 +165,7 @@ def manage_open_trades() -> List[str]:
             r = _r_multiple(t, t["tp3"])
             msg = (
                 f"🏆 TP3 HIT · {pair} {d}\n"
-                f"Price ~{round(price, 2)}\n"
+                f"TP3: {round(t['tp3'], 2)} · Now ~{round(price, 2)}\n"
                 f"Full target · ~{r}R"
             )
             send_message(msg)

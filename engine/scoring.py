@@ -1,7 +1,7 @@
 """
 Scoring:
-- BTC: momentum + breakout OK
-- Gold: pullback / structure only, H4 required, wide SL, no thin breakouts
+- BTC: momentum OK but entry MUST stay near live price (no late chase)
+- Gold: pullback / structure, H4 required, wide SL
 """
 from typing import Dict, Any, Optional, List
 import pandas as pd
@@ -115,9 +115,7 @@ def score_setup(
     h4_bias = determine_bias(h4)
     d1_bias = determine_bias(d1) if d1 is not None and not d1.empty else "neutral"
     h1_bias = determine_bias(h1) if h1 is not None and not h1.empty else "neutral"
-    m15_bias = determine_bias(m15)
 
-    # Gold MUST have clear H4 bias
     if require_htf and h4_bias not in ("bullish", "bearish"):
         print(f"{symbol}: no H4 bias — skip")
         return None
@@ -132,7 +130,6 @@ def score_setup(
             return None
         direction = "bullish" if net5 > 0 else "bearish"
 
-    # Gold: H1 should not strongly fight H4
     if is_gold and h1_bias in ("bullish", "bearish") and h1_bias != direction:
         print(f"{symbol}: H1 fights H4 — skip")
         return None
@@ -146,22 +143,20 @@ def score_setup(
     signed3 = net3 if direction == "bullish" else -net3
     signed5 = net5 if direction == "bullish" else -net5
 
-    # Structure: prefer H1 swing for gold (wider, more meaningful)
     structure = _h1_structure(h1, direction) if is_gold else None
     if structure is None:
         structure = find_nearby_structure_level(m15, direction)
     if structure is None:
         structure = (
-            float(m15["low"].tail(30).min())
+            float(m15["low"].tail(20).min())
             if direction == "bullish"
-            else float(m15["high"].tail(30).max())
+            else float(m15["high"].tail(20).max())
         )
 
     atr15 = _atr(m15, 14)
-    # Dynamic buffer: at least config buffer, scale with ATR for gold
     dyn_buf = sl_buffer
-    if is_gold and atr15 > 0:
-        dyn_buf = max(sl_buffer, atr15 * 0.9)
+    if atr15 > 0:
+        dyn_buf = max(sl_buffer, atr15 * (0.9 if is_gold else 0.6))
 
     last_body = float(tf["close"].iloc[-1] - tf["open"].iloc[-1])
     last_against = (direction == "bullish" and last_body < 0) or (
@@ -171,10 +166,14 @@ def score_setup(
         print(f"{symbol}: exhausted — skip")
         return None
 
-    # Gold: skip if already extended far from structure (chase)
+    # LATE MOVE: already ran hard — don't sell/buy after the drop/rally
+    if abs(signed5) >= disp_strong * 1.15 and abs(signed2) < disp_ok * 0.5:
+        print(f"{symbol}: late after big move — skip")
+        return None
+
     dist = abs(price - structure)
-    if is_gold and dist > dyn_buf * 2.2 and signed5 >= disp_solid:
-        print(f"{symbol}: extended from structure — skip chase")
+    if dist > dyn_buf * (2.2 if is_gold else 3.5) and signed5 >= disp_solid:
+        print(f"{symbol}: extended from structure — skip")
         return None
 
     fresh = _fresh_break(tf, direction) or _fresh_break(m15, direction)
@@ -193,17 +192,13 @@ def score_setup(
         and (fresh or bos == direction or signed3 >= disp_solid)
     )
 
-    # Gold: no pure breakout entries — need structure touch / rejection / sweep
     if is_gold and prefer_pullback:
-        quality = near or sweep == direction or engulf == direction or pin == direction or (
-            fvg and fvg.get("direction") == direction and near
-        )
+        quality = near or sweep == direction or engulf == direction or pin == direction
         if not quality:
-            # Allow only if strong CHoCH + H4 + not extended
             if not (choch == direction and h4_bias == direction and dist <= dyn_buf * 3):
-                print(f"{symbol}: no pullback/rejection quality — skip")
+                print(f"{symbol}: no pullback quality — skip")
                 return None
-        breakout = False  # force non-breakout model for gold
+        breakout = False
 
     if not allow_breakout:
         breakout = False
@@ -272,7 +267,6 @@ def score_setup(
     score += htf_pts
 
     if require_htf and htf_pts < 14:
-        print(f"{symbol}: weak HTF points — skip")
         return None
 
     fvg_ok = bool(fvg and fvg.get("direction") == direction)
@@ -281,34 +275,54 @@ def score_setup(
     avg_rng = float((m15["high"] - m15["low"]).tail(20).mean()) or 1
     if rng3 >= avg_rng * 1.1 or rng3 >= vol_abs_mid * 0.5:
         score += 5
-
     score += _session_points(session_mode)
 
     if is_gold and struct_pts < 12:
-        print(f"{symbol}: weak structure pts {struct_pts}")
         return None
 
-    # --- Levels: gold uses wide structure SL ---
+    # --- Entry MUST hug live price (fixes late/wrong zones) ---
     tick = max(price * 0.00005, 0.5) if symbol == "BTCUSD" else 0.5
-    if direction == "bullish":
-        el = round(min(structure, price) - tick, decimals)
-        eh = round(min(price + tick * 2, structure + dyn_buf * 0.6), decimals)
-        if el > eh:
-            el, eh = round(price - tick * 2, decimals), round(price + tick, decimals)
-        # SL beyond structure + buffer (room for spike)
-        stop = round(min(structure, el) - dyn_buf, decimals)
-        if stop >= el:
-            stop = round(el - dyn_buf, decimals)
+    if symbol == "BTCUSD":
+        # tight zone around current price only
+        band = max(80.0, atr15 * 0.35 if atr15 else 100.0)
+        if direction == "bullish":
+            el = round(price - band * 0.35, decimals)
+            eh = round(price + band * 0.15, decimals)
+            stop = round(min(structure, el) - dyn_buf, decimals)
+            if stop >= el:
+                stop = round(el - dyn_buf, decimals)
+        else:
+            el = round(price - band * 0.15, decimals)
+            eh = round(price + band * 0.35, decimals)
+            stop = round(max(structure, eh) + dyn_buf, decimals)
+            if stop <= eh:
+                stop = round(eh + dyn_buf, decimals)
     else:
-        el = round(max(price - tick * 2, structure - dyn_buf * 0.6), decimals)
-        eh = round(max(structure, price) + tick, decimals)
-        if el > eh:
-            el, eh = round(price - tick, decimals), round(price + tick * 2, decimals)
-        stop = round(max(structure, eh) + dyn_buf, decimals)
-        if stop <= eh:
-            stop = round(eh + dyn_buf, decimals)
+        if direction == "bullish":
+            el = round(min(structure, price) - tick, decimals)
+            eh = round(min(price + tick * 2, structure + dyn_buf * 0.6), decimals)
+            if el > eh:
+                el, eh = round(price - tick * 2, decimals), round(price + tick, decimals)
+            stop = round(min(structure, el) - dyn_buf, decimals)
+            if stop >= el:
+                stop = round(el - dyn_buf, decimals)
+        else:
+            el = round(max(price - tick * 2, structure - dyn_buf * 0.6), decimals)
+            eh = round(max(structure, price) + tick, decimals)
+            if el > eh:
+                el, eh = round(price - tick, decimals), round(price + tick * 2, decimals)
+            stop = round(max(structure, eh) + dyn_buf, decimals)
+            if stop <= eh:
+                stop = round(eh + dyn_buf, decimals)
 
     mid = (el + eh) / 2.0
+
+    # Hard reject: mid entry too far from live price
+    max_away = price * 0.004 if symbol == "BTCUSD" else max(12.0, price * 0.003)
+    if abs(mid - price) > max_away:
+        print(f"{symbol}: entry mid {mid} far from price {price} — late skip")
+        return None
+
     risk = abs(mid - stop)
     if risk < risk_min:
         stop = (
@@ -325,16 +339,22 @@ def score_setup(
         )
         risk = abs(mid - stop)
 
-    # Gold: slightly more conservative TP1 (1.6R), still scale out
     r1 = max(MIN_RR, 1.8 if is_gold else 1.6)
     if direction == "bullish":
         tp1 = round(mid + risk * r1, decimals)
         tp2 = round(mid + risk * 3.0, decimals)
         tp3 = round(mid + risk * 5.0, decimals)
     else:
+        # sell: TP1 closest (highest), TP3 furthest (lowest)
         tp1 = round(mid - risk * r1, decimals)
         tp2 = round(mid - risk * 3.0, decimals)
         tp3 = round(mid - risk * 5.0, decimals)
+
+    # Sanity: TPs on correct side of entry
+    if direction == "BUY" and not (tp1 > mid and tp3 > tp1):
+        return None
+    if direction == "SELL" and not (tp1 < mid and tp3 < tp1):
+        return None
 
     rr = round(abs(tp1 - mid) / risk, 2) if risk else 0.0
     if rr + 1e-9 < MIN_RR:

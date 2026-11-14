@@ -2,10 +2,10 @@ name: Price Action Signal Engine
 
 on:
   schedule:
-    # Every 5 min weekdays (catch moves early, not 10+ min late)
+    # Weekdays every 5 min
     - cron: "*/5 * * * 1-5"
-    # Weekend BTC still scanned hourly
-    - cron: "0 * * * 0,6"
+    # Weekends every 15 min (BTC still moves — was hourly = late TP alerts)
+    - cron: "*/15 * * * 0,6"
   workflow_dispatch:
 
 permissions:
