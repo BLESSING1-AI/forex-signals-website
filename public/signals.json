@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-14T21:39:15.709646+00:00",
+  "lastUpdated": "2026-11-16T00:23:41.260516+00:00",
   "mode": "scored",
   "pairs": [
     "XAUUSD",
@@ -11,6 +11,27 @@
   },
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "tier": "A",
+      "score": 70,
+      "model": "momentum_breakout",
+      "entry_zone": "64999.44-65042.43",
+      "stop_loss": "65628.15",
+      "tp1": "64049.39",
+      "tp2": "63199.29",
+      "tp3": "61984.86",
+      "rr": 1.6,
+      "invalidation": "close above 65628.15",
+      "reasons": [
+        "BOS",
+        "FVG",
+        "Momentum breakout",
+        "H4"
+      ],
+      "postedAt": "2026-11-16T00:23:41.260510+00:00"
+    },
     {
       "pair": "BTCUSD",
       "direction": "SELL",
