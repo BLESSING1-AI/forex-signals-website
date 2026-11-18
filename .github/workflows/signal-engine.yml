@@ -2,9 +2,7 @@ name: Price Action Signal Engine
 
 on:
   schedule:
-    # Weekdays every 5 min
     - cron: "*/5 * * * 1-5"
-    # Weekends every 15 min (BTC still moves — was hourly = late TP alerts)
     - cron: "*/15 * * * 0,6"
   workflow_dispatch:
 
@@ -40,6 +38,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: "-1004499950812"
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.0-flash
+          AI_STRICT: "true"
+          DRY_RUN: "false"
         run: python signal_engine.py
 
       - name: Commit website data
