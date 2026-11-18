@@ -1,7 +1,7 @@
 """
-Day-trading engine.
-Gold: strict London/NY pullback quality (few signals, wide SL).
-BTC: momentum allowed, more frequent.
+Day-trading engine with hybrid AI verification.
+Deterministic score/levels first → regime → Gemini gate → Telegram.
+Gold: London/NY pullback. BTC: momentum allowed, weekends OK.
 """
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -26,7 +26,20 @@ from config import (
     LONDON_END,
     NY_START,
     NY_END,
+    AI_STRICT,
+    DRY_RUN,
 )
+
+try:
+    from regime import detect_regime
+except Exception:
+    detect_regime = None
+
+try:
+    from ai_verifier import verify_setup, apply_ai_gate
+except Exception:
+    verify_setup = None
+    apply_ai_gate = None
 
 try:
     from signals_writer import record_signal
@@ -40,7 +53,6 @@ except Exception:
 
 
 def _in_gold_session() -> bool:
-    """Gold only in London or NY — avoid Asia chop."""
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
         return False
@@ -72,7 +84,7 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     cd = SIGNAL_COOLDOWN_MINUTES
     if symbol == "XAUUSD":
-        cd = max(cd, 90)  # gold: wait longer between signals
+        cd = max(cd, 90)
     if not cooldown_ok(symbol, cd):
         print(f"{symbol}: cooldown")
         return None
@@ -89,16 +101,28 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
         print(f"{symbol}: no setup")
         return None
 
-    # Per-symbol min score (gold stricter)
     min_sc = int(meta.get("min_score", MIN_SIGNAL_SCORE))
     if setup.get("action") == "signal" and setup.get("score", 0) < min_sc:
-        print(f"{symbol}: score {setup['score']} < min {min_sc} → watchlist")
         setup["action"] = "watchlist"
         setup["tier"] = "WATCHLIST"
 
+    # Regime (deterministic)
+    regime: Dict[str, Any] = {}
+    if detect_regime:
+        try:
+            regime = detect_regime(m15, h1=h1, h4=h4) or {}
+        except Exception as e:
+            print("regime error", e)
+            regime = {"regime": "unknown"}
+    setup["regime"] = regime.get("regime", "unknown")
+    setup["regime_detail"] = regime
+
+    # Strategy label from model
+    setup["strategy"] = setup.get("model") or "price_action"
+
     print(
-        f"SETUP {symbol} {setup['tier']} {setup['direction']} "
-        f"{setup['score']} {setup.get('model')} {setup.get('reasons')}"
+        f"SETUP {symbol} {setup.get('tier')} {setup.get('direction')} "
+        f"{setup.get('score')} {setup.get('strategy')} regime={setup.get('regime')}"
     )
 
     if is_duplicate(setup):
@@ -106,6 +130,28 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
         return None
 
     setup["invalidation"] = _invalidation(setup)
+
+    # Gemini verification — never invents prices
+    if setup.get("action") == "signal" and verify_setup and apply_ai_gate:
+        try:
+            ai = verify_setup(setup, regime)
+            setup = apply_ai_gate(setup, ai, strict=AI_STRICT)
+            print(
+                f"AI {symbol} decision={ai.get('decision')} "
+                f"conf={ai.get('confidence')} status={ai.get('ai_status')}"
+            )
+        except Exception as e:
+            print("AI error", e)
+            if AI_STRICT:
+                setup["action"] = "reject"
+                setup["tier"] = "REJECT"
+                setup["ai"] = {
+                    "decision": "REJECT",
+                    "confidence": 0,
+                    "explanation": f"AI error: {e}",
+                    "ai_status": "error",
+                }
+
     return setup
 
 
@@ -120,7 +166,16 @@ def run_momentum() -> bool:
         if not setup:
             continue
 
-        if setup.get("action") == "watchlist":
+        action = setup.get("action")
+
+        if action == "reject":
+            print(f"{symbol}: AI/engine REJECT — not sent")
+            continue
+
+        if action == "watchlist":
+            if DRY_RUN:
+                print("DRY_RUN watchlist", setup.get("pair"), setup.get("direction"))
+                continue
             if send_watchlist(setup):
                 mark_fingerprint(setup)
                 if record_signal:
@@ -130,12 +185,23 @@ def run_momentum() -> bool:
                         print("writer", e)
             continue
 
-        if setup.get("action") != "signal":
+        if action != "signal":
             continue
 
         meta = SYMBOLS.get(symbol, {})
         min_sc = int(meta.get("min_score", MIN_SIGNAL_SCORE))
-        if setup["score"] < min_sc:
+        if setup.get("score", 0) < min_sc:
+            continue
+
+        if DRY_RUN:
+            print(
+                "DRY_RUN signal",
+                setup.get("pair"),
+                setup.get("direction"),
+                setup.get("score"),
+                (setup.get("ai") or {}).get("decision"),
+            )
+            any_trade = True
             continue
 
         if send_scored_signal(setup):

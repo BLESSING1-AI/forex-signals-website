@@ -1,4 +1,4 @@
-"""Telegram — short day-trade signals + event trains"""
+"""Telegram — short signals with optional AI verification lines"""
 import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 
@@ -46,24 +46,35 @@ def send_message(text: str) -> bool:
 
 
 def send_scored_signal(setup: dict) -> bool:
-    """Short day-trade format (same style as manual signals)."""
     pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     tier = setup.get("tier", "A")
     score = setup.get("score", 0)
     icon = "🔥" if tier == "A+" else "⚡"
+    strategy = setup.get("strategy") or setup.get("model") or "PA"
+    regime = setup.get("regime") or "—"
     reasons = setup.get("reasons") or []
-    why = reasons[0] if reasons else setup.get("model", "")
+    why = reasons[0] if reasons else strategy
+    ai = setup.get("ai") or {}
+    ai_dec = ai.get("decision")
+    ai_conf = ai.get("confidence")
+    ai_status = ai.get("ai_status", "")
 
     lines = [
         f"{icon} {pair} {d}",
+        f"Strategy: {strategy}",
         f"In: {setup['entry_zone']}",
         f"SL: {setup['stop_loss']}",
         f"TP1: {setup['tp1']} | TP2: {setup['tp2']} | TP3: {setup['tp3']}",
-        f"Risk 1% · {tier} {score}",
+        f"RR ~1:{setup.get('rr', '—')} · Risk 1% · {tier} {score}",
+        f"Regime: {regime}",
     ]
+    if ai_dec:
+        lines.append(f"AI: {ai_dec} ({ai_conf if ai_conf is not None else '—'})")
+    elif ai_status:
+        lines.append(f"AI: {ai_status}")
     if why:
-        lines.append(str(why))
+        lines.append(str(why)[:80])
     return send_message("\n".join(lines))
 
 
@@ -71,9 +82,13 @@ def send_watchlist(setup: dict) -> bool:
     pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     score = setup.get("score", 0)
+    ai = setup.get("ai") or {}
+    extra = ""
+    if ai.get("decision"):
+        extra = f"\nAI: {ai.get('decision')} ({ai.get('confidence', '—')})"
     return send_message(
         f"👀 {pair} WATCH {d}\n"
-        f"Score {score} · waiting confirmation\n"
+        f"Score {score} · waiting confirmation{extra}\n"
         f"No entry yet"
     )
 
