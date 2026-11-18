@@ -1,5 +1,5 @@
-"""Persist sent keys, daily counts, cooldowns, fingerprints, open trades.
-Atomic writes + basic schema validation.
+"""Persist sent keys, daily counts, cooldowns, fingerprints, open/closed trades.
+Atomic writes + light versioning for GitHub Actions safety.
 """
 import json
 import os
@@ -12,7 +12,7 @@ STATE_VERSION = 2
 MAX_KEYS = 300
 
 
-def _default() -> Dict[str, Any]:
+def _default_state() -> Dict[str, Any]:
     return {
         "version": STATE_VERSION,
         "keys": [],
@@ -21,53 +21,52 @@ def _default() -> Dict[str, Any]:
         "fingerprints": {},
         "open_trades": [],
         "closed_trades": [],
+        "updated": None,
     }
-
-
-def _validate(data: Any) -> Dict[str, Any]:
-    if not isinstance(data, dict):
-        return _default()
-    out = _default()
-    out["keys"] = list(data.get("keys") or [])[-MAX_KEYS:]
-    out["daily"] = data.get("daily") if isinstance(data.get("daily"), dict) else {}
-    out["cooldown"] = data.get("cooldown") if isinstance(data.get("cooldown"), dict) else {}
-    out["fingerprints"] = (
-        data.get("fingerprints") if isinstance(data.get("fingerprints"), dict) else {}
-    )
-    out["open_trades"] = (
-        data.get("open_trades") if isinstance(data.get("open_trades"), list) else []
-    )
-    out["closed_trades"] = (
-        data.get("closed_trades") if isinstance(data.get("closed_trades"), list) else []
-    )
-    out["version"] = STATE_VERSION
-    if data.get("updated"):
-        out["updated"] = data["updated"]
-    return out
 
 
 def _load_raw() -> Dict[str, Any]:
     try:
         if not os.path.exists(STATE_PATH):
-            return _default()
+            return _default_state()
         with open(STATE_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return _validate(data)
+        if not isinstance(data, dict):
+            print("state: invalid root — resetting")
+            return _default_state()
+        # migrate / fill missing keys
+        base = _default_state()
+        for k, default in base.items():
+            if k not in data:
+                data[k] = default
+        data["version"] = STATE_VERSION
+        return data
+    except json.JSONDecodeError as e:
+        print("state JSON corrupt:", e)
+        # attempt backup rename
+        try:
+            bak = STATE_PATH + ".corrupt"
+            if os.path.exists(STATE_PATH):
+                os.replace(STATE_PATH, bak)
+        except Exception:
+            pass
+        return _default_state()
     except Exception as e:
-        print("state load error — recovering defaults:", e)
-        return _default()
+        print("state load error:", e)
+        return _default_state()
 
 
 def _save_raw(data: Dict[str, Any]) -> None:
-    data = _validate(data)
-    data["updated"] = datetime.now(timezone.utc).isoformat()
+    """Atomic write: temp file + os.replace."""
     data["version"] = STATE_VERSION
+    data["updated"] = datetime.now(timezone.utc).isoformat()
     try:
         directory = os.path.dirname(STATE_PATH) or "."
-        fd, tmp = tempfile.mkstemp(prefix=".state_", suffix=".json", dir=directory)
+        os.makedirs(directory, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix=".signal_state.", suffix=".tmp", dir=directory)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f)
+                json.dump(data, f, indent=None)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp, STATE_PATH)
@@ -141,6 +140,7 @@ def mark_cooldown(symbol: str) -> None:
 
 def fingerprint(setup: Dict[str, Any]) -> str:
     zone = str(setup.get("entry_zone", ""))
+    # bucket zone to avoid tiny float differences
     try:
         parts = zone.split("-")
         a = round(float(parts[0]) / 5) * 5
@@ -180,6 +180,7 @@ def mark_fingerprint(setup: Dict[str, Any]) -> None:
     data = _load_raw()
     fps = data.get("fingerprints") or {}
     fps[fp] = datetime.now(timezone.utc).isoformat()
+    # prune old
     if len(fps) > 100:
         items = sorted(fps.items(), key=lambda x: x[1])[-80:]
         fps = dict(items)

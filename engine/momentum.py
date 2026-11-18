@@ -1,7 +1,8 @@
 """
-Day-trading engine with hybrid AI verification.
-Deterministic score/levels first → regime → Gemini gate → Telegram.
-Gold: London/NY pullback. BTC: momentum allowed, weekends OK.
+Day-trading engine with Hybrid AI verification.
+Gold: strict London/NY pullback quality (few signals, wide SL).
+BTC: momentum allowed, more frequent.
+AI (Gemini) verifies qualified setups; never invents prices.
 """
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -28,6 +29,7 @@ from config import (
     NY_END,
     AI_STRICT,
     DRY_RUN,
+    AI_ENABLED,
 )
 
 try:
@@ -53,6 +55,7 @@ except Exception:
 
 
 def _in_gold_session() -> bool:
+    """Gold only in London or NY — avoid Asia chop."""
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5:
         return False
@@ -84,7 +87,7 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     cd = SIGNAL_COOLDOWN_MINUTES
     if symbol == "XAUUSD":
-        cd = max(cd, 90)
+        cd = max(cd, 90)  # gold: wait longer between signals
     if not cooldown_ok(symbol, cd):
         print(f"{symbol}: cooldown")
         return None
@@ -96,30 +99,38 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
         print(f"{symbol}: missing bars")
         return None
 
+    # Data quality gate
+    quality = data.get("_quality") or {}
+    if quality.get("status") == "stale":
+        print(f"{symbol}: stale candles — skip")
+        return None
+
     setup = score_setup(d1, h4, m15, m5, news_bonus=0, symbol=symbol, h1=h1)
     if not setup:
         print(f"{symbol}: no setup")
         return None
 
+    # Per-symbol min score (gold stricter)
     min_sc = int(meta.get("min_score", MIN_SIGNAL_SCORE))
     if setup.get("action") == "signal" and setup.get("score", 0) < min_sc:
+        print(f"{symbol}: score {setup['score']} < min {min_sc} → watchlist")
         setup["action"] = "watchlist"
         setup["tier"] = "WATCHLIST"
 
-    regime: Dict[str, Any] = {}
+    # --- Market regime (independent) ---
+    regime_info: Dict[str, Any] = {}
     if detect_regime:
         try:
-            regime = detect_regime(m15, h1=h1, h4=h4) or {}
+            regime_info = detect_regime(m15, h1=h1, h4=h4) or {}
         except Exception as e:
-            print("regime error", e)
-            regime = {"regime": "unknown"}
-    setup["regime"] = regime.get("regime", "unknown")
-    setup["regime_detail"] = regime
-    setup["strategy"] = setup.get("model") or "price_action"
+            print(f"{symbol}: regime error", e)
+            regime_info = {"regime": "unknown"}
+    setup["regime"] = regime_info
 
     print(
-        f"SETUP {symbol} {setup.get('tier')} {setup.get('direction')} "
-        f"{setup.get('score')} {setup.get('strategy')} regime={setup.get('regime')}"
+        f"SETUP {symbol} {setup['tier']} {setup['direction']} "
+        f"{setup['score']} {setup.get('model')} regime={regime_info.get('regime')} "
+        f"{setup.get('reasons')}"
     )
 
     if is_duplicate(setup):
@@ -128,25 +139,35 @@ def generate_for_symbol(symbol: str) -> Optional[Dict[str, Any]]:
 
     setup["invalidation"] = _invalidation(setup)
 
-    if setup.get("action") == "signal" and verify_setup and apply_ai_gate:
-        try:
-            ai = verify_setup(setup, regime)
-            setup = apply_ai_gate(setup, ai, strict=AI_STRICT)
-            print(
-                f"AI {symbol} decision={ai.get('decision')} "
-                f"conf={ai.get('confidence')} status={ai.get('ai_status')}"
-            )
-        except Exception as e:
-            print("AI error", e)
-            if AI_STRICT:
-                setup["action"] = "reject"
-                setup["tier"] = "REJECT"
-                setup["ai"] = {
-                    "decision": "REJECT",
-                    "confidence": 0,
-                    "explanation": f"AI error: {e}",
-                    "ai_status": "error",
-                }
+    # --- Hybrid AI verification (only for candidate signals / strong watchlist) ---
+    if setup.get("action") in ("signal", "watchlist") and verify_setup and apply_ai_gate:
+        if AI_ENABLED:
+            try:
+                ai_result = verify_setup(setup, regime=regime_info)
+                setup = apply_ai_gate(setup, ai_result, strict=AI_STRICT)
+                print(
+                    f"AI {symbol}: {ai_result.get('decision')} conf={ai_result.get('confidence')} "
+                    f"status={ai_result.get('ai_status')} → action={setup.get('action')}"
+                )
+            except Exception as e:
+                print(f"{symbol}: AI gate error", e)
+                # Fail closed when strict
+                if AI_STRICT:
+                    setup["action"] = "reject"
+                    setup["tier"] = "REJECT"
+                    setup["ai"] = {
+                        "decision": "REJECT",
+                        "confidence": 0,
+                        "explanation": f"AI exception: {str(e)[:120]}",
+                        "ai_status": "error",
+                    }
+        else:
+            setup["ai"] = {
+                "decision": "WATCH",
+                "confidence": 0,
+                "explanation": "AI disabled",
+                "ai_status": "disabled",
+            }
 
     return setup
 
@@ -165,12 +186,13 @@ def run_momentum() -> bool:
         action = setup.get("action")
 
         if action == "reject":
-            print(f"{symbol}: AI/engine REJECT — not sent")
+            print(f"{symbol}: rejected by AI/rules")
             continue
 
         if action == "watchlist":
             if DRY_RUN:
-                print("DRY_RUN watchlist", setup.get("pair"), setup.get("direction"))
+                print(f"[DRY_RUN] watchlist {symbol} {setup.get('direction')} {setup.get('score')}")
+                mark_fingerprint(setup)
                 continue
             if send_watchlist(setup):
                 mark_fingerprint(setup)
@@ -189,14 +211,19 @@ def run_momentum() -> bool:
         if setup.get("score", 0) < min_sc:
             continue
 
+        # Final AI strict check: never post live without successful APPROVE when strict
+        ai = setup.get("ai") or {}
+        if AI_STRICT and AI_ENABLED:
+            if ai.get("decision") != "APPROVE" or ai.get("ai_status") not in ("ok", "cached"):
+                print(f"{symbol}: AI_STRICT blocked — decision={ai.get('decision')} status={ai.get('ai_status')}")
+                continue
+
         if DRY_RUN:
             print(
-                "DRY_RUN signal",
-                setup.get("pair"),
-                setup.get("direction"),
-                setup.get("score"),
-                (setup.get("ai") or {}).get("decision"),
+                f"[DRY_RUN] SIGNAL {symbol} {setup['direction']} score={setup['score']} "
+                f"AI={ai.get('decision')} conf={ai.get('confidence')}"
             )
+            mark_fingerprint(setup)
             any_trade = True
             continue
 
@@ -215,5 +242,5 @@ def run_momentum() -> bool:
                 except Exception as e:
                     print("writer", e)
             any_trade = True
-            print(f"SENT {symbol} {setup['direction']} {setup['score']}")
+            print(f"SENT {symbol} {setup['direction']} {setup['score']} AI={ai.get('decision')}")
     return any_trade

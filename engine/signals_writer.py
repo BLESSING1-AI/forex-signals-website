@@ -1,4 +1,4 @@
-"""Write signals + trade results for the static website."""
+"""Write signals + trade results for the static website (includes AI metadata)."""
 import json
 import os
 from datetime import datetime, timezone
@@ -13,6 +13,7 @@ MAX_SIGNALS = 30
 MAX_WATCH = 15
 MAX_CLOSED = 50
 
+
 def _load(path: str) -> dict:
     try:
         if os.path.exists(path):
@@ -22,7 +23,7 @@ def _load(path: str) -> dict:
         print("signals_writer load", e)
     return {
         "lastUpdated": None,
-        "mode": "scored",
+        "mode": "hybrid-ai",
         "pairs": ["XAUUSD", "BTCUSD"],
         "signals": [],
         "watchlist": [],
@@ -30,6 +31,7 @@ def _load(path: str) -> dict:
         "events": [],
         "stats": {},
     }
+
 
 def _save(path: str, data: dict) -> None:
     try:
@@ -39,7 +41,10 @@ def _save(path: str, data: dict) -> None:
     except Exception as e:
         print("signals_writer save", path, e)
 
+
 def _row(setup: Dict[str, Any]) -> dict:
+    ai = setup.get("ai") or {}
+    regime = setup.get("regime") or {}
     return {
         "pair": setup.get("pair", "XAUUSD"),
         "direction": setup.get("direction"),
@@ -54,8 +59,16 @@ def _row(setup: Dict[str, Any]) -> dict:
         "rr": setup.get("rr"),
         "invalidation": setup.get("invalidation"),
         "reasons": setup.get("reasons") or [],
+        "regime": regime.get("regime"),
+        "volatility": regime.get("volatility"),
+        "ai_decision": ai.get("decision"),
+        "ai_confidence": ai.get("confidence"),
+        "ai_status": ai.get("ai_status"),
+        "ai_explanation": (ai.get("explanation") or "")[:300],
+        "setup_quality": ai.get("setup_quality"),
         "postedAt": datetime.now(timezone.utc).isoformat(),
     }
+
 
 def record_signal(setup: Dict[str, Any], watchlist: bool = False) -> None:
     row = _row(setup)
@@ -64,7 +77,7 @@ def record_signal(setup: Dict[str, Any], watchlist: bool = False) -> None:
         data = _load(path)
         data["lastUpdated"] = now
         data["pairs"] = ["XAUUSD", "BTCUSD"]
-        data["mode"] = "scored"
+        data["mode"] = "hybrid-ai"
         if watchlist:
             wl = data.get("watchlist") or []
             wl.insert(0, row)
@@ -75,8 +88,10 @@ def record_signal(setup: Dict[str, Any], watchlist: bool = False) -> None:
             data["signals"] = sigs[:MAX_SIGNALS]
         _save(path, data)
 
+
 def record_trade_update(trade: dict, event: str) -> None:
     pass
+
 
 def record_closed_trade(trade: dict) -> None:
     now = datetime.now(timezone.utc).isoformat()
@@ -88,6 +103,8 @@ def record_closed_trade(trade: dict) -> None:
         "entry": trade.get("entry"),
         "exit": trade.get("exit"),
         "closed_at": trade.get("closed_at") or now,
+        "score": trade.get("score"),
+        "tier": trade.get("tier"),
     }
     for path in PATHS:
         data = _load(path)

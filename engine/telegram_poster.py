@@ -1,6 +1,6 @@
-"""Telegram — short signals with optional AI verification lines"""
+"""Telegram — enriched day-trade signals + event trains + AI status"""
 import requests
-from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID, DRY_RUN
 
 CHANNEL_FALLBACK = "-1004499950812"
 
@@ -13,6 +13,9 @@ def _chat_id() -> str:
 
 
 def send_message(text: str) -> bool:
+    if DRY_RUN:
+        print("[DRY_RUN TG]\n" + text[:500])
+        return True
     if not TELEGRAM_BOT_TOKEN:
         print("No TELEGRAM_BOT_TOKEN")
         return False
@@ -46,35 +49,39 @@ def send_message(text: str) -> bool:
 
 
 def send_scored_signal(setup: dict) -> bool:
+    """Enriched day-trade format with AI verification + regime."""
     pair = setup.get("pair", "XAUUSD")
     d = setup["direction"]
     tier = setup.get("tier", "A")
     score = setup.get("score", 0)
+    model = setup.get("model", "")
     icon = "🔥" if tier == "A+" else "⚡"
-    strategy = setup.get("strategy") or setup.get("model") or "PA"
-    regime = setup.get("regime") or "—"
     reasons = setup.get("reasons") or []
-    why = reasons[0] if reasons else strategy
+    why = ", ".join(str(r) for r in reasons[:3]) if reasons else model
+
     ai = setup.get("ai") or {}
-    ai_dec = ai.get("decision")
-    ai_conf = ai.get("confidence")
+    regime = setup.get("regime") or {}
+    regime_label = regime.get("regime", "—")
+    ai_decision = ai.get("decision", "—")
+    ai_conf = ai.get("confidence", 0)
     ai_status = ai.get("ai_status", "")
 
     lines = [
         f"{icon} {pair} {d}",
-        f"Strategy: {strategy}",
+        f"Strategy: {model or 'price_action'}",
         f"In: {setup['entry_zone']}",
         f"SL: {setup['stop_loss']}",
         f"TP1: {setup['tp1']} | TP2: {setup['tp2']} | TP3: {setup['tp3']}",
-        f"RR ~1:{setup.get('rr', '—')} · Risk 1% · {tier} {score}",
-        f"Regime: {regime}",
+        f"RR ~{setup.get('rr', '—')} · Risk 1% · {tier} {score}",
+        f"Regime: {regime_label}",
     ]
-    if ai_dec:
-        lines.append(f"AI: {ai_dec} ({ai_conf if ai_conf is not None else '—'})")
-    elif ai_status:
-        lines.append(f"AI: {ai_status}")
+    if ai_status and ai_status != "disabled":
+        lines.append(f"AI: {ai_decision} ({ai_conf}%)")
     if why:
-        lines.append(str(why)[:80])
+        lines.append(str(why)[:120])
+    warns = ai.get("warnings") or []
+    if warns:
+        lines.append("⚠ " + "; ".join(str(w) for w in warns[:2])[:100])
     return send_message("\n".join(lines))
 
 
@@ -83,13 +90,15 @@ def send_watchlist(setup: dict) -> bool:
     d = setup["direction"]
     score = setup.get("score", 0)
     ai = setup.get("ai") or {}
-    extra = ""
+    regime = (setup.get("regime") or {}).get("regime", "")
+    ai_bit = ""
     if ai.get("decision"):
-        extra = f"\nAI: {ai.get('decision')} ({ai.get('confidence', '—')})"
+        ai_bit = f" · AI {ai.get('decision')}"
     return send_message(
         f"👀 {pair} WATCH {d}\n"
-        f"Score {score} · waiting confirmation{extra}\n"
-        f"No entry yet"
+        f"Score {score}{ai_bit}"
+        + (f" · {regime}" if regime else "")
+        + "\nNo entry yet"
     )
 
 
