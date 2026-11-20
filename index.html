@@ -3,24 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apex Edge — Hybrid AI Price Action Terminal</title>
-  <meta name="description" content="Deterministic price-action levels + Gemini AI verification for XAUUSD and BTCUSD. Clear bias, conviction, and structure." />
+  <title>Apex Edge — Structure-first. AI-verified. Trade-ready levels.</title>
+  <meta name="description" content="Hybrid AI price-action terminal for XAUUSD & BTCUSD. Deterministic entry/SL/TP. Gemini verification. You keep the decision." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            ink: { 950: '#05060a', 900: '#0a0c12', 800: '#12151f', 700: '#1a1e2b' },
-            accent: { 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed' },
+            ink: { 950: '#03040a', 900: '#070912', 800: '#0e1220', 700: '#161b2e', 600: '#1e2540' },
+            accent: { 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed' },
             gold: { 400: '#fbbf24', 500: '#f59e0b' },
-            btc: { 400: '#f7931a', 500: '#e67e00' }
+            btc: { 400: '#f7931a' }
           },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif']
-          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
           boxShadow: {
-            glow: '0 0 40px -10px rgba(139, 92, 246, 0.35)'
+            glow: '0 0 60px -12px rgba(139,92,246,0.45)',
+            card: '0 20px 50px -20px rgba(0,0,0,0.7)'
           }
         }
       }
@@ -30,223 +29,324 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    body { background: #05060a; }
-    .hero-grid {
-      background-image:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 58, 237, 0.18), transparent),
-        radial-gradient(ellipse 60% 40% at 80% 10%, rgba(245, 158, 11, 0.06), transparent);
+    body { background: #03040a; }
+    .hero-bg {
+      background:
+        radial-gradient(ellipse 90% 60% at 50% -10%, rgba(124,58,237,0.22), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 90% 20%, rgba(245,158,11,0.07), transparent),
+        radial-gradient(ellipse 40% 30% at 10% 60%, rgba(139,92,246,0.08), transparent);
     }
     .glass {
-      background: linear-gradient(180deg, rgba(18, 21, 31, 0.9), rgba(10, 12, 18, 0.95));
-      border: 1px solid rgba(255,255,255,0.06);
-      backdrop-filter: blur(12px);
+      background: linear-gradient(165deg, rgba(22,27,46,0.85), rgba(7,9,18,0.92));
+      border: 1px solid rgba(255,255,255,0.07);
+      backdrop-filter: blur(16px);
     }
+    .glass-strong {
+      background: linear-gradient(165deg, rgba(30,37,64,0.9), rgba(14,18,32,0.95));
+      border: 1px solid rgba(167,139,250,0.15);
+      backdrop-filter: blur(20px);
+    }
+    .card-hover { transition: border-color .2s, box-shadow .2s, transform .2s; }
     .card-hover:hover {
-      border-color: rgba(167, 139, 250, 0.25);
-      box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.08), 0 12px 40px -20px rgba(0,0,0,0.6);
+      border-color: rgba(167,139,250,0.3);
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.1), 0 16px 48px -24px rgba(0,0,0,0.8);
+      transform: translateY(-1px);
     }
-    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .pill { @apply text-[10px] font-medium px-2 py-0.5 rounded-full; }
+    html { scroll-behavior: smooth; }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen font-sans antialiased">
+<body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-accent-500/30">
 
-  <!-- Nav -->
-  <nav class="sticky top-0 z-50 border-b border-white/5 bg-ink-950/80 backdrop-blur-xl">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-glow">
-          <span class="text-white font-bold text-sm tracking-tight">AE</span>
-        </div>
-        <div>
-          <div class="font-semibold text-sm tracking-wide">Apex Edge</div>
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider">Hybrid AI Terminal</div>
-        </div>
+<!-- NAV -->
+<nav class="sticky top-0 z-50 border-b border-white/[0.04] bg-ink-950/75 backdrop-blur-xl">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-glow">
+        <span class="text-white font-bold text-sm">AE</span>
       </div>
-      <div class="hidden sm:flex items-center gap-6 text-sm text-slate-400">
-        <a href="#signals" class="hover:text-white transition">Signals</a>
-        <a href="#risk" class="hover:text-white transition">Risk</a>
-        <a href="#results" class="hover:text-white transition">Results</a>
+      <div class="leading-tight">
+        <div class="font-semibold text-sm tracking-wide">Apex Edge</div>
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider">Hybrid AI Terminal</div>
       </div>
-      <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
-         class="text-sm font-medium px-4 py-1.5 rounded-full bg-gradient-to-r from-accent-500 to-accent-600 text-white hover:opacity-90 transition shadow-glow">
-        Telegram
-      </a>
+    </a>
+    <div class="hidden md:flex items-center gap-7 text-sm text-slate-400">
+      <a href="#terminal" class="hover:text-white transition">Terminal</a>
+      <a href="#edge" class="hover:text-white transition">Edge</a>
+      <a href="#workflow" class="hover:text-white transition">Workflow</a>
+      <a href="#results" class="hover:text-white transition">Results</a>
     </div>
-  </nav>
+    <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
+       class="text-sm font-semibold px-4 py-1.5 rounded-full bg-white text-ink-950 hover:bg-slate-100 transition">
+      Open Telegram
+    </a>
+  </div>
+</nav>
 
-  <!-- Hero -->
-  <header class="hero-grid border-b border-white/5">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
-      <div class="max-w-2xl">
-        <p class="text-xs font-medium text-accent-400 uppercase tracking-[0.2em] mb-4">Price action · Gemini verified</p>
-        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.1] mb-4">
-          Clear directional reads<br />
-          <span class="bg-gradient-to-r from-white via-slate-200 to-accent-400 bg-clip-text text-transparent">before the move.</span>
+<!-- HERO -->
+<header class="hero-bg relative overflow-hidden border-b border-white/[0.04]">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-20 relative z-10">
+    <div class="grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+      <!-- Copy -->
+      <div class="lg:col-span-6">
+        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 mb-6">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[11px] text-slate-300 font-medium">Live · XAUUSD &amp; BTCUSD</span>
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight leading-[1.08] mb-5">
+          Structure first.<br />
+          <span class="bg-gradient-to-r from-white via-accent-300 to-accent-400 bg-clip-text text-transparent">AI verified.</span><br />
+          Levels you can trade.
         </h1>
-        <p class="text-slate-400 text-base sm:text-lg leading-relaxed mb-8 max-w-xl">
-          Deterministic structure levels for XAUUSD &amp; BTCUSD. Rule-based score first, Gemini AI gate second.
-          You keep the decision.
+        <p class="text-slate-400 text-base sm:text-lg leading-relaxed mb-8 max-w-md">
+          Not another bias feed. Apex Edge scores price-action setups, locks entry / SL / TP by rules,
+          then runs Gemini as a strict gate. No invented prices. No black box.
         </p>
-        <div class="flex flex-wrap gap-3">
-          <a href="#signals" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-ink-950 font-semibold text-sm hover:bg-slate-100 transition">
-            View live setups
+        <div class="flex flex-wrap gap-3 mb-10">
+          <a href="#terminal" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-ink-950 font-semibold text-sm hover:bg-slate-100 transition shadow-glow">
+            View live terminal
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </a>
           <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
-             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 text-sm text-slate-300 hover:border-white/20 hover:text-white transition">
-            Join Telegram
+             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/15 text-sm text-slate-300 hover:border-white/30 hover:text-white transition">
+            Get alerts on Telegram
           </a>
         </div>
+        <!-- Mini KPIs -->
+        <div class="grid grid-cols-3 gap-3 max-w-md">
+          <div class="glass rounded-xl px-3 py-3">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500">Active</p>
+            <p id="stat-active" class="text-xl font-bold tabular-nums">—</p>
+          </div>
+          <div class="glass rounded-xl px-3 py-3">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500">Win rate</p>
+            <p id="stat-wr" class="text-xl font-bold tabular-nums">—</p>
+          </div>
+          <div class="glass rounded-xl px-3 py-3">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500">Avg R</p>
+            <p id="stat-ar" class="text-xl font-bold tabular-nums">—</p>
+          </div>
+        </div>
       </div>
 
-      <!-- Live strip -->
-      <div class="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="glass rounded-2xl p-4">
-          <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Coverage</p>
-          <p class="font-semibold text-gold-400">XAU · BTC</p>
+      <!-- Floating product cards (Polairyx-style density, cleaner) -->
+      <div class="lg:col-span-6 relative min-h-[340px] sm:min-h-[400px]">
+        <!-- Bias card -->
+        <div class="absolute top-0 right-0 w-[92%] sm:w-[85%] glass-strong rounded-2xl p-4 shadow-card z-20">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] uppercase tracking-wider text-accent-400 font-semibold">Directional bias</span>
+            <span class="text-[10px] text-slate-500">Live</span>
+          </div>
+          <div class="space-y-2" id="hero-bias">
+            <div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
+              <span class="font-semibold text-gold-400 text-sm">XAUUSD</span>
+              <span class="text-sm text-slate-400">Loading…</span>
+            </div>
+            <div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
+              <span class="font-semibold text-btc-400 text-sm">BTCUSD</span>
+              <span class="text-sm text-slate-400">Loading…</span>
+            </div>
+          </div>
         </div>
-        <div class="glass rounded-2xl p-4">
-          <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Active setups</p>
-          <p id="stat-active" class="font-semibold text-lg">—</p>
+        <!-- Signal peek card -->
+        <div class="absolute bottom-0 left-0 w-[88%] sm:w-[78%] glass rounded-2xl p-4 shadow-card z-10" id="hero-peek">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Latest setup</span>
+          </div>
+          <p class="text-sm text-slate-400">Waiting for signal data…</p>
         </div>
-        <div class="glass rounded-2xl p-4">
-          <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Win rate</p>
-          <p id="stat-wr" class="font-semibold text-lg">—</p>
-        </div>
-        <div class="glass rounded-2xl p-4">
-          <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Avg R</p>
-          <p id="stat-ar" class="font-semibold text-lg">—</p>
-        </div>
+        <!-- Glow orb -->
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-accent-600/20 blur-3xl pointer-events-none"></div>
       </div>
     </div>
-  </header>
+  </div>
+</header>
 
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-16">
+<main>
 
-    <!-- How it works -->
-    <section class="grid sm:grid-cols-3 gap-4">
-      <div class="glass rounded-2xl p-5">
-        <div class="text-accent-400 text-xs font-semibold uppercase tracking-wider mb-2">01 · Structure</div>
-        <h3 class="font-semibold mb-1">Deterministic levels</h3>
-        <p class="text-sm text-slate-400">BOS, CHoCH, sweeps, FVG and structure zones. Entry, SL and TPs calculated by rules — AI never invents prices.</p>
+  <!-- PROBLEM / SOLUTION strip -->
+  <section class="border-b border-white/[0.04]">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 gap-8">
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.2em] text-rose-400/80 font-semibold mb-2">The problem</p>
+        <h2 class="text-xl font-bold mb-2">Bias without levels is noise</h2>
+        <p class="text-sm text-slate-400 leading-relaxed">Most AI terminals stop at “bullish 72%”. You still open five charts to find the entry, the stop, and whether the structure actually supports the call.</p>
       </div>
-      <div class="glass rounded-2xl p-5">
-        <div class="text-accent-400 text-xs font-semibold uppercase tracking-wider mb-2">02 · Regime</div>
-        <h3 class="font-semibold mb-1">Market context</h3>
-        <p class="text-sm text-slate-400">Trend, volatility and compression labels so you know if the setup fits the current environment.</p>
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.2em] text-emerald-400/80 font-semibold mb-2">The solution</p>
+        <h2 class="text-xl font-bold mb-2">One card. Full plan.</h2>
+        <p class="text-sm text-slate-400 leading-relaxed">Every Apex Edge setup ships with zone, structure SL, 3 TPs, RR, regime, and AI decision. Ready for risk sizing — not another tab to reconcile.</p>
       </div>
-      <div class="glass rounded-2xl p-5">
-        <div class="text-accent-400 text-xs font-semibold uppercase tracking-wider mb-2">03 · AI gate</div>
-        <h3 class="font-semibold mb-1">Gemini verification</h3>
-        <p class="text-sm text-slate-400">APPROVE / WATCH / REJECT with confidence. Strict mode: only approved setups become live signals.</p>
-      </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- Signals -->
-    <section id="signals">
-      <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <!-- EDGE / WHY BETTER -->
+  <section id="edge" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <div class="text-center mb-10">
+      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Why Apex Edge</p>
+      <h2 class="text-3xl font-extrabold tracking-tight">Built different from macro-only terminals</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass rounded-2xl p-5 card-hover">
+        <div class="text-accent-400 text-xs font-bold mb-2">01</div>
+        <h3 class="font-semibold mb-1">Rules own the prices</h3>
+        <p class="text-sm text-slate-400">Entry zone, SL and TPs come from structure math. AI cannot invent or move levels.</p>
+      </div>
+      <div class="glass rounded-2xl p-5 card-hover">
+        <div class="text-accent-400 text-xs font-bold mb-2">02</div>
+        <h3 class="font-semibold mb-1">Strict AI gate</h3>
+        <p class="text-sm text-slate-400">Gemini returns APPROVE / WATCH / REJECT. Fail-closed: API issues never auto-approve.</p>
+      </div>
+      <div class="glass rounded-2xl p-5 card-hover">
+        <div class="text-accent-400 text-xs font-bold mb-2">03</div>
+        <h3 class="font-semibold mb-1">Regime-aware</h3>
+        <p class="text-sm text-slate-400">Trend, volatility and compression labels so you know if the model fits the day.</p>
+      </div>
+      <div class="glass rounded-2xl p-5 card-hover">
+        <div class="text-accent-400 text-xs font-bold mb-2">04</div>
+        <h3 class="font-semibold mb-1">Lifecycle managed</h3>
+        <p class="text-sm text-slate-400">TP1 → move to BE → TP2 → TP3. Results tracked in R. Not fire-and-forget alerts.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE TERMINAL -->
+  <section id="terminal" class="border-y border-white/[0.04] bg-ink-900 rep_900/40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+      <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p class="text-xs font-medium text-accent-400 uppercase tracking-[0.15em] mb-1">Directional bias</p>
-          <h2 class="text-2xl font-bold tracking-tight">Active setups</h2>
+          <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Live terminal</p>
+          <h2 class="text-3xl font-extrabold tracking-tight">Active setups</h2>
+          <p class="text-sm text-slate-400 mt-1">Structure-scored · AI-gated · Updated from the engine</p>
         </div>
-        <div class="flex gap-2 text-sm" id="filters">
-          <button data-filter="ALL" class="filter-btn px-3.5 py-1.5 rounded-full bg-accent-500 text-white font-medium text-xs">All</button>
-          <button data-filter="XAUUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-800 text-slate-300 text-xs hover:bg-ink-700">XAUUSD</button>
-          <button data-filter="BTCUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-800 text-slate-300 text-xs hover:bg-ink-700">BTCUSD</button>
+        <div class="flex gap-2" id="filters">
+          <button data-filter="ALL" class="filter-btn px-3.5 py-1.5 rounded-full bg-accent-500 text-white text-xs font-semibold">All</button>
+          <button data-filter="XAUUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">XAUUSD</button>
+          <button data-filter="BTCUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">BTCUSD</button>
         </div>
       </div>
       <div id="signal-list" class="grid sm:grid-cols-2 gap-4">
-        <div class="glass rounded-2xl p-8 text-center text-slate-500 text-sm col-span-full">Loading setups…</div>
+        <div class="glass rounded-2xl p-10 text-center text-slate-500 text-sm col-span-full">Loading terminal…</div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- Risk calculator -->
-    <section id="risk" class="glass rounded-2xl p-6 sm:p-8">
+  <!-- WORKFLOW -->
+  <section id="workflow" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <div class="text-center mb-10">
+      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Workflow</p>
+      <h2 class="text-3xl font-extrabold tracking-tight">Your edge in four steps</h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass rounded-2xl p-5 relative">
+        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">1</span>
+        <p class="text-accent-400 text-xs font-semibold mb-2">Scan</p>
+        <h3 class="font-semibold mb-1">Structure engine runs</h3>
+        <p class="text-sm text-slate-400">BOS, CHoCH, sweeps, FVG, HTF bias. Only quality candidates survive scoring.</p>
+      </div>
+      <div class="glass rounded-2xl p-5 relative">
+        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">2</span>
+        <p class="text-accent-400 text-xs font-semibold mb-2">Gate</p>
+        <h3 class="font-semibold mb-1">Gemini reviews</h3>
+        <p class="text-sm text-slate-400">Regime + setup context. APPROVE only when the model agrees direction and quality.</p>
+      </div>
+      <div class="glass rounded-2xl p-5 relative">
+        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">3</span>
+        <p class="text-accent-400 text-xs font-semibold mb-2">Alert</p>
+        <h3 class="font-semibold mb-1">Telegram + terminal</h3>
+        <p class="text-sm text-slate-400">Full plan posted: zone, SL, TP1–3, RR, regime, AI confidence.</p>
+      </div>
+      <div class="glass rounded-2xl p-5 relative">
+        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">4</span>
+        <p class="text-accent-400 text-xs font-semibold mb-2">Manage</p>
+        <h3 class="font-semibold mb-1">TP1 → BE → runners</h3>
+        <p class="text-sm text-slate-400">Lifecycle tracked. Results logged in R for the dashboard.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RISK -->
+  <section id="risk" class="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div class="glass-strong rounded-2xl p-6 sm:p-8">
       <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <p class="text-xs font-medium text-accent-400 uppercase tracking-[0.15em] mb-1">Position sizing</p>
+          <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-1">Position sizing</p>
           <h2 class="text-xl font-bold">Risk calculator</h2>
         </div>
-        <p id="rc-out" class="text-sm font-medium text-accent-400">Risk $10.00</p>
+        <p id="rc-out" class="text-sm font-semibold text-accent-300">Risk $10.00</p>
       </div>
       <div class="grid sm:grid-cols-4 gap-4 text-sm">
-        <label class="block">
-          <span class="text-xs text-slate-500">Account ($)</span>
-          <input id="rc-balance" type="number" value="1000" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" />
-        </label>
-        <label class="block">
-          <span class="text-xs text-slate-500">Risk %</span>
-          <input id="rc-risk" type="number" value="1" step="0.1" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" />
-        </label>
-        <label class="block">
-          <span class="text-xs text-slate-500">Entry</span>
-          <input id="rc-entry" type="number" value="2650" step="0.01" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" />
-        </label>
-        <label class="block">
-          <span class="text-xs text-slate-500">Stop</span>
-          <input id="rc-sl" type="number" value="2630" step="0.01" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" />
-        </label>
+        <label class="block"><span class="text-xs text-slate-500">Account ($)</span>
+          <input id="rc-balance" type="number" value="1000" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" /></label>
+        <label class="block"><span class="text-xs text-slate-500">Risk %</span>
+          <input id="rc-risk" type="number" value="1" step="0.1" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" /></label>
+        <label class="block"><span class="text-xs text-slate-500">Entry</span>
+          <input id="rc-entry" type="number" value="2650" step="0.01" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" /></label>
+        <label class="block"><span class="text-xs text-slate-500">Stop</span>
+          <input id="rc-sl" type="number" value="2630" step="0.01" class="mt-1.5 w-full rounded-xl bg-ink-950 border border-white/10 px-3 py-2.5 focus:outline-none focus:border-accent-500/50" /></label>
       </div>
-    </section>
-
-    <!-- Results -->
-    <section id="results">
-      <div class="mb-6">
-        <p class="text-xs font-medium text-accent-400 uppercase tracking-[0.15em] mb-1">Track record</p>
-        <h2 class="text-2xl font-bold tracking-tight">Recent results</h2>
-      </div>
-      <div id="closed-list" class="space-y-2 text-sm text-slate-400">
-        <div class="glass rounded-xl px-4 py-3 text-slate-500">No closed trades yet.</div>
-      </div>
-    </section>
-
-    <!-- Disclaimer -->
-    <section class="border-t border-white/5 pt-10 pb-6">
-      <div class="max-w-2xl mx-auto text-center space-y-3">
-        <p class="text-xs text-slate-500 leading-relaxed">
-          Educational information only. Not investment advice. Levels are rule-based; AI verifies quality but does not place trades for you.
-          Past performance does not guarantee future results. Trade at your own risk.
-        </p>
-        <p class="text-[11px] text-slate-600">
-          Hybrid AI · TP1 closest → BE · TP2 · TP3 furthest · Telegram commands: /status /last /stats
-        </p>
-      </div>
-    </section>
-  </main>
-
-  <footer class="border-t border-white/5 py-6">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-      <span>© 2026 Apex Edge</span>
-      <span id="last-updated">—</span>
-      <a href="https://t.me/PriceActionSignalsHub" class="hover:text-slate-400 transition" target="_blank" rel="noopener">Telegram channel</a>
     </div>
-  </footer>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <div class="mb-8">
+      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Track record</p>
+      <h2 class="text-3xl font-extrabold tracking-tight">Recent results</h2>
+    </div>
+    <div id="closed-list" class="space-y-2">
+      <div class="glass rounded-xl px-4 py-3 text-slate-500 text-sm">No closed trades yet.</div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="border-t border-white/[0.04]">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center">
+      <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-3">Trade the plan, not the noise</h2>
+      <p class="text-slate-400 mb-8 max-w-lg mx-auto">Live setups on the terminal. Instant alerts on Telegram. Structure + AI — you execute.</p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <a href="#terminal" class="px-5 py-2.5 rounded-full bg-white text-ink-950 font-semibold text-sm hover:bg-slate-100 transition">Open terminal</a>
+        <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
+           class="px-5 py-2.5 rounded-full border border-white/15 text-sm text-slate-300 hover:text-white hover:border-white/30 transition">Join Telegram</a>
+      </div>
+      <p class="mt-10 text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
+        Educational information only. Not investment advice. Rule-based levels; AI verifies quality.
+        Past results do not guarantee future performance. Trade at your own risk.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer class="border-t border-white/[0.04] py-6">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+    <span>© 2026 Apex Edge</span>
+    <span id="last-updated">—</span>
+    <a href="https://t.me/PriceActionSignalsHub" class="hover:text-slate-400 transition" target="_blank" rel="noopener">Telegram</a>
+  </div>
+</footer>
 
 <script>
 let allSignals = [], currentFilter = 'ALL';
 
-function pairColor(p) {
-  return p === 'BTCUSD' ? 'text-btc-400' : 'text-gold-400';
-}
+function pairColor(p) { return p === 'BTCUSD' ? 'text-btc-400' : 'text-gold-400'; }
 
 function dirBadge(d) {
   d = (d || '').toUpperCase();
-  if (d === 'BUY') return '<span class="inline-flex items-center gap-1 text-emerald-400 font-semibold text-sm"><span class="text-lg leading-none">↑</span> BUY</span>';
-  return '<span class="inline-flex items-center gap-1 text-rose-400 font-semibold text-sm"><span class="text-lg leading-none">↓</span> SELL</span>';
+  if (d === 'BUY') return '<span class="inline-flex items-center gap-1 text-emerald-400 font-semibold text-sm"><span class="text-base leading-none">↑</span> BUY</span>';
+  return '<span class="inline-flex items-center gap-1 text-rose-400 font-semibold text-sm"><span class="text-base leading-none">↓</span> SELL</span>';
 }
 
 function tierBadge(t) {
   if (t === 'A+') return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium">A+</span>';
   if (t === 'A') return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">A</span>';
-  return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 font-medium">Watch</span>';
+  return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400 font-medium">Watch</span>';
 }
 
 function convictionBadge(s) {
   const d = (s.ai_decision || '').toUpperCase();
   const conf = s.ai_confidence;
-  if (d === 'APPROVE') {
-    return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">AI APPROVE${conf != null ? ' · ' + conf + '%' : ''}</span>`;
-  }
+  if (d === 'APPROVE') return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">AI ${conf != null ? conf + '%' : 'APPROVE'}</span>`;
   if (d === 'REJECT') return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 font-medium">AI REJECT</span>';
   if (d === 'WATCH') return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 font-medium">AI WATCH</span>';
   if (s.score != null) return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 font-medium">Score ${s.score}</span>`;
@@ -256,31 +356,28 @@ function convictionBadge(s) {
 function card(s) {
   const pair = s.pair || 'XAUUSD';
   const reasons = (s.reasons || []).slice(0, 4).map(r =>
-    `<span class="text-[10px] px-2 py-0.5 rounded-md bg-white/5 text-slate-400">${r}</span>`
+    `<span class="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.04] text-slate-400">${r}</span>`
   ).join('');
-  const regime = s.regime ? `<span class="text-[10px] text-slate-500">${s.regime}${s.volatility ? ' · ' + s.volatility : ''}</span>` : '';
-  const model = s.model ? `<span class="text-[10px] text-slate-500">${s.model}</span>` : '';
+  const meta = [s.model, s.regime, s.rr != null ? 'RR ' + s.rr : null].filter(Boolean).join(' · ');
 
   return `
-  <article class="glass rounded-2xl p-5 card-hover transition duration-200">
-    <div class="flex flex-wrap items-center gap-2 mb-3">
+  <article class="glass rounded-2xl p-5 card-hover">
+    <div class="flex flex-wrap items-center gap-2 mb-2">
       <span class="font-bold ${pairColor(pair)}">${pair}</span>
       ${dirBadge(s.direction)}
       ${tierBadge(s.tier || 'A')}
       ${convictionBadge(s)}
     </div>
-    <div class="flex flex-wrap gap-2 mb-4 text-[10px] text-slate-500">
-      ${model}${model && regime ? ' · ' : ''}${regime}${s.rr != null ? ' · RR ' + s.rr : ''}
-    </div>
+    ${meta ? `<p class="text-[10px] text-slate-500 mb-3">${meta}</p>` : ''}
     <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
       <div class="flex justify-between gap-2"><span class="text-slate-500">Entry</span><span class="font-medium tabular-nums">${s.entry_zone || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">TP1</span><span class="text-emerald-300 tabular-nums">${s.tp1 || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">SL</span><span class="text-rose-300 tabular-nums">${s.stop_loss || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">TP2</span><span class="tabular-nums">${s.tp2 || '—'}</span></div>
-      <div class="flex justify-between gap-2 col-span-2 sm:col-span-1"><span class="text-slate-500">Invalidation</span><span class="text-xs text-slate-400 truncate max-w-[140px]">${s.invalidation || '—'}</span></div>
+      <div class="flex justify-between gap-2"><span class="text-slate-500">Invalidation</span><span class="text-xs text-slate-400 truncate max-w-[130px]">${s.invalidation || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">TP3</span><span class="tabular-nums">${s.tp3 || '—'}</span></div>
     </div>
-    ${reasons ? `<div class="mt-4 flex flex-wrap gap-1.5">${reasons}</div>` : ''}
+    ${reasons ? `<div class="mt-3 flex flex-wrap gap-1.5">${reasons}</div>` : ''}
     ${s.ai_explanation ? `<p class="mt-3 text-xs text-slate-500 line-clamp-2 leading-relaxed">${s.ai_explanation}</p>` : ''}
   </article>`;
 }
@@ -288,11 +385,56 @@ function card(s) {
 function render() {
   const list = document.getElementById('signal-list');
   const items = allSignals.filter(s => currentFilter === 'ALL' || (s.pair || 'XAUUSD') === currentFilter);
-  if (!items.length) {
-    list.innerHTML = '<div class="glass rounded-2xl p-10 text-center text-slate-500 text-sm col-span-full">No active setups right now. Live alerts go to Telegram first.</div>';
+  list.innerHTML = items.length
+    ? items.map(card).join('')
+    : '<div class="glass rounded-2xl p-10 text-center text-slate-500 text-sm col-span-full">No active setups. Alerts hit Telegram first when the engine posts.</div>';
+}
+
+function updateHero(data) {
+  const sigs = data.signals || [];
+  const watch = data.watchlist || [];
+  const all = [...sigs, ...watch];
+
+  function latestFor(pair) {
+    return all.find(s => (s.pair || '') === pair);
+  }
+
+  function biasRow(pair, color) {
+    const s = latestFor(pair);
+    if (!s) return `<div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5"><span class="font-semibold ${color} text-sm">${pair}</span><span class="text-sm text-slate-500">No setup</span></div>`;
+    const d = (s.direction || '').toUpperCase();
+    const arrow = d === 'BUY' ? '↑' : '↓';
+    const col = d === 'BUY' ? 'text-emerald-400' : 'text-rose-400';
+    const conf = s.ai_confidence != null ? s.ai_confidence + '%' : (s.score != null ? 'sc ' + s.score : '');
+    return `<div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
+      <span class="font-semibold ${color} text-sm">${pair}</span>
+      <span class="${col} text-sm font-semibold">${arrow} ${d}${conf ? ' · ' + conf : ''}</span>
+    </div>`;
+  }
+
+  document.getElementById('hero-bias').innerHTML =
+    biasRow('XAUUSD', 'text-gold-400') + biasRow('BTCUSD', 'text-btc-400');
+
+  const latest = sigs[0] || watch[0];
+  const peek = document.getElementById('hero-peek');
+  if (!latest) {
+    peek.innerHTML = '<div class="flex items-center gap-2 mb-2"><span class="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Latest setup</span></div><p class="text-sm text-slate-400">Waiting for signal data…</p>';
     return;
   }
-  list.innerHTML = items.map(card).join('');
+  const p = latest.pair || 'XAUUSD';
+  peek.innerHTML = `
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Latest setup</span>
+      ${tierBadge(latest.tier)}
+    </div>
+    <div class="flex items-center gap-2 mb-2">
+      <span class="font-bold ${pairColor(p)}">${p}</span>
+      ${dirBadge(latest.direction)}
+    </div>
+    <div class="text-xs text-slate-400 space-y-0.5">
+      <div>In <span class="text-slate-200">${latest.entry_zone || '—'}</span> · SL <span class="text-rose-300">${latest.stop_loss || '—'}</span></div>
+      <div>TP1 <span class="text-emerald-300">${latest.tp1 || '—'}</span> · TP2 ${latest.tp2 || '—'} · TP3 ${latest.tp3 || '—'}</div>
+    </div>`;
 }
 
 document.getElementById('filters').addEventListener('click', e => {
@@ -300,10 +442,10 @@ document.getElementById('filters').addEventListener('click', e => {
   if (!b) return;
   currentFilter = b.dataset.filter;
   document.querySelectorAll('.filter-btn').forEach(x => {
-    const active = x.dataset.filter === currentFilter;
-    x.className = active
-      ? 'filter-btn px-3.5 py-1.5 rounded-full bg-accent-500 text-white font-medium text-xs'
-      : 'filter-btn px-3.5 py-1.5 rounded-full bg-ink-800 text-slate-300 text-xs hover:bg-ink-700';
+    const on = x.dataset.filter === currentFilter;
+    x.className = on
+      ? 'filter-btn px-3.5 py-1.5 rounded-full bg-accent-500 text-white text-xs font-semibold'
+      : 'filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600';
   });
   render();
 });
@@ -316,9 +458,9 @@ function calcRisk() {
   const risk$ = bal * (pct / 100);
   const dist = Math.abs(entry - sl) || 1;
   document.getElementById('rc-out').textContent =
-    `Risk $${risk$.toFixed(2)} · Distance ${dist.toFixed(2)} · Units ≈ ${(risk$ / dist).toFixed(4)}`;
+    `Risk $${risk$.toFixed(2)} · Dist ${dist.toFixed(2)} · Units ≈ ${(risk$ / dist).toFixed(4)}`;
 }
-['rc-balance', 'rc-risk', 'rc-entry', 'rc-sl'].forEach(id =>
+['rc-balance','rc-risk','rc-entry','rc-sl'].forEach(id =>
   document.getElementById(id).addEventListener('input', calcRisk)
 );
 calcRisk();
@@ -335,21 +477,21 @@ async function load() {
     document.getElementById('stat-wr').textContent = st.win_rate != null ? st.win_rate + '%' : '—';
     document.getElementById('stat-ar').textContent = st.avg_r != null ? st.avg_r : '—';
     if (data.lastUpdated) {
-      const d = new Date(data.lastUpdated);
-      document.getElementById('last-updated').textContent = 'Updated ' + d.toLocaleString();
+      document.getElementById('last-updated').textContent = 'Updated ' + new Date(data.lastUpdated).toLocaleString();
     }
+    updateHero(data);
     const closed = data.closed || [];
     document.getElementById('closed-list').innerHTML = closed.length
       ? closed.slice(0, 10).map(c => {
           const pos = (c.result_r || 0) > 0;
-          return `<div class="glass rounded-xl px-4 py-3 flex justify-between items-center gap-3">
+          return `<div class="glass rounded-xl px-4 py-3 flex flex-wrap justify-between items-center gap-2 text-sm">
             <span class="font-medium ${c.pair === 'BTCUSD' ? 'text-btc-400' : 'text-gold-400'}">${c.pair}</span>
             <span class="text-slate-400">${c.direction}</span>
             <span class="text-xs text-slate-500">${c.outcome || ''}</span>
             <span class="font-semibold tabular-nums ${pos ? 'text-emerald-400' : 'text-rose-400'}">${c.result_r ?? '—'}R</span>
           </div>`;
         }).join('')
-      : '<div class="glass rounded-xl px-4 py-3 text-slate-500">No closed trades yet.</div>';
+      : '<div class="glass rounded-xl px-4 py-3 text-slate-500 text-sm">No closed trades yet.</div>';
     render();
   } catch (e) {
     document.getElementById('signal-list').innerHTML =
