@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-11-19T18:42:10.992692+00:00",
+  "lastUpdated": "2026-11-20T00:56:10.961200+00:00",
   "mode": "hybrid-ai",
   "pairs": [
     "XAUUSD",
@@ -11,6 +11,35 @@
   },
   "telegram": "https://t.me/PriceActionSignalsHub",
   "signals": [
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
+      "tier": "A",
+      "score": 74,
+      "model": "pullback",
+      "entry_zone": "61895.33-61940.79",
+      "stop_loss": "62441.17",
+      "tp1": "61081.08",
+      "tp2": "60348.73",
+      "tp3": "59302.51",
+      "rr": 1.6,
+      "invalidation": "close above 62441.17",
+      "reasons": [
+        "At structure",
+        "Engulf",
+        "Pin",
+        "Momentum breakout",
+        "H4"
+      ],
+      "regime": "consolidation",
+      "volatility": "normal",
+      "ai_decision": "WATCH",
+      "ai_confidence": 0,
+      "ai_status": "disabled",
+      "ai_explanation": "AI disabled",
+      "setup_quality": null,
+      "postedAt": "2026-11-20T00:56:10.961171+00:00"
+    },
     {
       "pair": "BTCUSD",
       "direction": "SELL",
@@ -823,6 +852,17 @@
     {
       "pair": "BTCUSD",
       "direction": "SELL",
+      "outcome": "TP3",
+      "result_r": 5.0,
+      "entry": 65020.935,
+      "exit": 61984.86,
+      "closed_at": "2026-11-20T00:56:08.521535+00:00",
+      "score": 70,
+      "tier": "A"
+    },
+    {
+      "pair": "BTCUSD",
+      "direction": "SELL",
       "outcome": "SL",
       "result_r": -1.0,
       "entry": 64105.54,
@@ -1020,10 +1060,10 @@
     }
   ],
   "stats": {
-    "closed": 22,
-    "wins": 13,
-    "win_rate": 59.1,
-    "avg_r": 2.34
+    "closed": 23,
+    "wins": 14,
+    "win_rate": 60.9,
+    "avg_r": 2.46
   },
   "events": []
 }
