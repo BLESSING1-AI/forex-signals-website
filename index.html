@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apex Edge — Structure-first. AI-verified. Trade-ready levels.</title>
-  <meta name="description" content="Hybrid AI price-action terminal for XAUUSD & BTCUSD. Deterministic entry/SL/TP. Gemini verification. You keep the decision." />
+  <title>Apex Edge — Structure-first hybrid AI terminal for Gold & Bitcoin</title>
+  <meta name="description" content="Deterministic price-action levels for XAUUSD & BTCUSD. Rule-based entry, SL, TP1–3. Gemini AI gate. Regime context. You keep the decision." />
+  <meta name="theme-color" content="#03040a" />
+  <meta property="og:title" content="Apex Edge — Hybrid AI Price Action Terminal" />
+  <meta property="og:description" content="Structure scores the setup. AI verifies. Levels are locked. Trade-ready plans for Gold & Bitcoin." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -32,35 +35,57 @@
     body { background: #03040a; }
     .hero-bg {
       background:
-        radial-gradient(ellipse 90% 60% at 50% -10%, rgba(124,58,237,0.22), transparent 55%),
-        radial-gradient(ellipse 50% 40% at 90% 20%, rgba(245,158,11,0.07), transparent),
-        radial-gradient(ellipse 40% 30% at 10% 60%, rgba(139,92,246,0.08), transparent);
+        radial-gradient(ellipse 90% 55% at 50% -8%, rgba(124,58,237,0.24), transparent 55%),
+        radial-gradient(ellipse 45% 35% at 92% 18%, rgba(245,158,11,0.07), transparent),
+        radial-gradient(ellipse 35% 30% at 8% 70%, rgba(139,92,246,0.07), transparent);
     }
     .glass {
-      background: linear-gradient(165deg, rgba(22,27,46,0.85), rgba(7,9,18,0.92));
+      background: linear-gradient(165deg, rgba(22,27,46,0.88), rgba(7,9,18,0.94));
       border: 1px solid rgba(255,255,255,0.07);
       backdrop-filter: blur(16px);
     }
     .glass-strong {
-      background: linear-gradient(165deg, rgba(30,37,64,0.9), rgba(14,18,32,0.95));
-      border: 1px solid rgba(167,139,250,0.15);
+      background: linear-gradient(165deg, rgba(30,37,64,0.92), rgba(14,18,32,0.96));
+      border: 1px solid rgba(167,139,250,0.16);
       backdrop-filter: blur(20px);
     }
     .card-hover { transition: border-color .2s, box-shadow .2s, transform .2s; }
     .card-hover:hover {
-      border-color: rgba(167,139,250,0.3);
-      box-shadow: 0 0 0 1px rgba(139,92,246,0.1), 0 16px 48px -24px rgba(0,0,0,0.8);
+      border-color: rgba(167,139,250,0.32);
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.1), 0 16px 48px -24px rgba(0,0,0,0.85);
       transform: translateY(-1px);
     }
     .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .pill { @apply text-[10px] font-medium px-2 py-0.5 rounded-full; }
     html { scroll-behavior: smooth; }
+    .faq-item[open] summary { color: #c4b5fd; }
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%); background-size: 200% 100%; animation: sk 1.2s ease-in-out infinite; }
+    @keyframes sk { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+    .toast {
+      position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(120%);
+      background: #161b2e; border: 1px solid rgba(167,139,250,0.35); color: #e2e8f0;
+      padding: 0.6rem 1.1rem; border-radius: 999px; font-size: 0.8rem; z-index: 100;
+      transition: transform .3s ease; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-accent-500/30">
 
+<div id="toast" class="toast">Copied</div>
+
+<!-- TOP STATUS -->
+<div class="border-b border-white/[0.04] bg-ink-900/80 text-[11px] text-slate-500">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-8 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span>Engine online · Hybrid AI mode</span>
+    </div>
+    <span id="status-updated" class="truncate">—</span>
+  </div>
+</div>
+
 <!-- NAV -->
-<nav class="sticky top-0 z-50 border-b border-white/[0.04] bg-ink-950/75 backdrop-blur-xl">
+<nav class="sticky top-0 z-50 border-b border-white/[0.04] bg-ink-950/80 backdrop-blur-xl">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
     <a href="#" class="flex items-center gap-2.5">
       <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-glow">
@@ -71,11 +96,11 @@
         <div class="text-[10px] text-slate-500 uppercase tracking-wider">Hybrid AI Terminal</div>
       </div>
     </a>
-    <div class="hidden md:flex items-center gap-7 text-sm text-slate-400">
+    <div class="hidden md:flex items-center gap-6 text-sm text-slate-400">
       <a href="#terminal" class="hover:text-white transition">Terminal</a>
-      <a href="#edge" class="hover:text-white transition">Edge</a>
-      <a href="#workflow" class="hover:text-white transition">Workflow</a>
-      <a href="#results" class="hover:text-white transition">Results</a>
+      <a href="#compare" class="hover:text-white transition">Compare</a>
+      <a href="#method" class="hover:text-white transition">Method</a>
+      <a href="#faq" class="hover:text-white transition">FAQ</a>
     </div>
     <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
        class="text-sm font-semibold px-4 py-1.5 rounded-full bg-white text-ink-950 hover:bg-slate-100 transition">
@@ -86,34 +111,31 @@
 
 <!-- HERO -->
 <header class="hero-bg relative overflow-hidden border-b border-white/[0.04]">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-20 relative z-10">
-    <div class="grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-      <!-- Copy -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-16 relative z-10">
+    <div class="grid lg:grid-cols-12 gap-10 items-center">
       <div class="lg:col-span-6">
-        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 mb-6">
+        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 mb-5">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-[11px] text-slate-300 font-medium">Live · XAUUSD &amp; BTCUSD</span>
+          <span class="text-[11px] text-slate-300 font-medium">XAUUSD · BTCUSD · Live terminal</span>
         </div>
-        <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight leading-[1.08] mb-5">
-          Structure first.<br />
-          <span class="bg-gradient-to-r from-white via-accent-300 to-accent-400 bg-clip-text text-transparent">AI verified.</span><br />
-          Levels you can trade.
+        <h1 class="text-4xl sm:text-5xl lg:text-[3.35rem] font-extrabold tracking-tight leading-[1.08] mb-5">
+          Structure scores it.<br />
+          <span class="bg-gradient-to-r from-white via-accent-300 to-accent-400 bg-clip-text text-transparent">AI verifies it.</span><br />
+          You trade the levels.
         </h1>
         <p class="text-slate-400 text-base sm:text-lg leading-relaxed mb-8 max-w-md">
-          Not another bias feed. Apex Edge scores price-action setups, locks entry / SL / TP by rules,
-          then runs Gemini as a strict gate. No invented prices. No black box.
+          Not a bias feed. Every setup ships with locked entry zone, structure stop, three targets, RR, regime and AI decision. Ready for risk.
         </p>
         <div class="flex flex-wrap gap-3 mb-10">
           <a href="#terminal" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-ink-950 font-semibold text-sm hover:bg-slate-100 transition shadow-glow">
-            View live terminal
+            Open live terminal
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </a>
           <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/15 text-sm text-slate-300 hover:border-white/30 hover:text-white transition">
-            Get alerts on Telegram
+            Get Telegram alerts
           </a>
         </div>
-        <!-- Mini KPIs -->
         <div class="grid grid-cols-3 gap-3 max-w-md">
           <div class="glass rounded-xl px-3 py-3">
             <p class="text-[10px] uppercase tracking-wider text-slate-500">Active</p>
@@ -130,33 +152,22 @@
         </div>
       </div>
 
-      <!-- Floating product cards (Polairyx-style density, cleaner) -->
-      <div class="lg:col-span-6 relative min-h-[340px] sm:min-h-[400px]">
-        <!-- Bias card -->
-        <div class="absolute top-0 right-0 w-[92%] sm:w-[85%] glass-strong rounded-2xl p-4 shadow-card z-20">
+      <div class="lg:col-span-6 relative min-h-[320px] sm:min-h-[380px]">
+        <div class="absolute top-0 right-0 w-[94%] sm:w-[86%] glass-strong rounded-2xl p-4 shadow-card z-20">
           <div class="flex items-center justify-between mb-3">
             <span class="text-[10px] uppercase tracking-wider text-accent-400 font-semibold">Directional bias</span>
-            <span class="text-[10px] text-slate-500">Live</span>
+            <span class="text-[10px] text-slate-500">From latest setups</span>
           </div>
           <div class="space-y-2" id="hero-bias">
-            <div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
-              <span class="font-semibold text-gold-400 text-sm">XAUUSD</span>
-              <span class="text-sm text-slate-400">Loading…</span>
-            </div>
-            <div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
-              <span class="font-semibold text-btc-400 text-sm">BTCUSD</span>
-              <span class="text-sm text-slate-400">Loading…</span>
-            </div>
+            <div class="skeleton h-11 rounded-xl"></div>
+            <div class="skeleton h-11 rounded-xl"></div>
           </div>
         </div>
-        <!-- Signal peek card -->
-        <div class="absolute bottom-0 left-0 w-[88%] sm:w-[78%] glass rounded-2xl p-4 shadow-card z-10" id="hero-peek">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Latest setup</span>
-          </div>
-          <p class="text-sm text-slate-400">Waiting for signal data…</p>
+        <div class="absolute bottom-0 left-0 w-[90%] sm:w-[80%] glass rounded-2xl p-4 shadow-card z-10" id="hero-peek">
+          <div class="skeleton h-4 w-24 rounded mb-3"></div>
+          <div class="skeleton h-5 w-40 rounded mb-2"></div>
+          <div class="skeleton h-4 w-full rounded"></div>
         </div>
-        <!-- Glow orb -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-accent-600/20 blur-3xl pointer-events-none"></div>
       </div>
     </div>
@@ -165,110 +176,120 @@
 
 <main>
 
-  <!-- PROBLEM / SOLUTION strip -->
+  <!-- PROBLEM / SOLUTION -->
   <section class="border-b border-white/[0.04]">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 gap-8">
       <div>
         <p class="text-[11px] uppercase tracking-[0.2em] text-rose-400/80 font-semibold mb-2">The problem</p>
-        <h2 class="text-xl font-bold mb-2">Bias without levels is noise</h2>
-        <p class="text-sm text-slate-400 leading-relaxed">Most AI terminals stop at “bullish 72%”. You still open five charts to find the entry, the stop, and whether the structure actually supports the call.</p>
+        <h2 class="text-xl font-bold mb-2">Bias without a plan is expensive</h2>
+        <p class="text-sm text-slate-400 leading-relaxed">Most AI tools stop at “bullish 74%”. You still hunt the entry, invent a stop, and guess invalidation while the move is already underway.</p>
       </div>
       <div>
-        <p class="text-[11px] uppercase tracking-[0.2em] text-emerald-400/80 font-semibold mb-2">The solution</p>
-        <h2 class="text-xl font-bold mb-2">One card. Full plan.</h2>
-        <p class="text-sm text-slate-400 leading-relaxed">Every Apex Edge setup ships with zone, structure SL, 3 TPs, RR, regime, and AI decision. Ready for risk sizing — not another tab to reconcile.</p>
+        <p class="text-[11px] uppercase tracking-[0.2em] text-emerald-400/80 font-semibold mb-2">The Apex Edge way</p>
+        <h2 class="text-xl font-bold mb-2">One card. Full trade plan.</h2>
+        <p class="text-sm text-slate-400 leading-relaxed">Structure builds the levels. AI only approves or rejects. You size risk and execute — without reconciling five tabs.</p>
       </div>
     </div>
   </section>
 
-  <!-- EDGE / WHY BETTER -->
-  <section id="edge" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+  <!-- COMPARE -->
+  <section id="compare" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
     <div class="text-center mb-10">
-      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Why Apex Edge</p>
-      <h2 class="text-3xl font-extrabold tracking-tight">Built different from macro-only terminals</h2>
+      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Compare</p>
+      <h2 class="text-3xl font-extrabold tracking-tight">What you actually get</h2>
     </div>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass rounded-2xl p-5 card-hover">
-        <div class="text-accent-400 text-xs font-bold mb-2">01</div>
-        <h3 class="font-semibold mb-1">Rules own the prices</h3>
-        <p class="text-sm text-slate-400">Entry zone, SL and TPs come from structure math. AI cannot invent or move levels.</p>
-      </div>
-      <div class="glass rounded-2xl p-5 card-hover">
-        <div class="text-accent-400 text-xs font-bold mb-2">02</div>
-        <h3 class="font-semibold mb-1">Strict AI gate</h3>
-        <p class="text-sm text-slate-400">Gemini returns APPROVE / WATCH / REJECT. Fail-closed: API issues never auto-approve.</p>
-      </div>
-      <div class="glass rounded-2xl p-5 card-hover">
-        <div class="text-accent-400 text-xs font-bold mb-2">03</div>
-        <h3 class="font-semibold mb-1">Regime-aware</h3>
-        <p class="text-sm text-slate-400">Trend, volatility and compression labels so you know if the model fits the day.</p>
-      </div>
-      <div class="glass rounded-2xl p-5 card-hover">
-        <div class="text-accent-400 text-xs font-bold mb-2">04</div>
-        <h3 class="font-semibold mb-1">Lifecycle managed</h3>
-        <p class="text-sm text-slate-400">TP1 → move to BE → TP2 → TP3. Results tracked in R. Not fire-and-forget alerts.</p>
-      </div>
+    <div class="overflow-x-auto rounded-2xl border border-white/[0.06]">
+      <table class="w-full text-sm text-left min-w-[640px]">
+        <thead class="bg-ink-800/80 text-slate-400 text-xs uppercase tracking-wider">
+          <tr>
+            <th class="px-5 py-3 font-medium">Capability</th>
+            <th class="px-5 py-3 font-medium">Signal groups</th>
+            <th class="px-5 py-3 font-medium">Macro AI terminals</th>
+            <th class="px-5 py-3 font-medium text-accent-300">Apex Edge</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/[0.04]">
+          <tr class="bg-ink-900/40"><td class="px-5 py-3 text-slate-300">Entry / SL / TP</td><td class="px-5 py-3 text-slate-500">Sometimes</td><td class="px-5 py-3 text-slate-500">Rarely</td><td class="px-5 py-3 text-emerald-400 font-medium">Always · rule-locked</td></tr>
+          <tr><td class="px-5 py-3 text-slate-300">Who sets prices</td><td class="px-5 py-3 text-slate-500">Human / opaque</td><td class="px-5 py-3 text-slate-500">AI narrative</td><td class="px-5 py-3 text-emerald-400 font-medium">Deterministic engine</td></tr>
+          <tr class="bg-ink-900/40"><td class="px-5 py-3 text-slate-300">AI role</td><td class="px-5 py-3 text-slate-500">Often none</td><td class="px-5 py-3 text-slate-500">Generates bias</td><td class="px-5 py-3 text-emerald-400 font-medium">Strict gate only</td></tr>
+          <tr><td class="px-5 py-3 text-slate-300">Regime context</td><td class="px-5 py-3 text-slate-500">No</td><td class="px-5 py-3 text-slate-500">Yes</td><td class="px-5 py-3 text-emerald-400 font-medium">Yes · per setup</td></tr>
+          <tr class="bg-ink-900/40"><td class="px-5 py-3 text-slate-300">Trade lifecycle</td><td class="px-5 py-3 text-slate-500">Manual</td><td class="px-5 py-3 text-slate-500">None</td><td class="px-5 py-3 text-emerald-400 font-medium">TP1→BE→TP2→TP3</td></tr>
+          <tr><td class="px-5 py-3 text-slate-300">Results in R</td><td class="px-5 py-3 text-slate-500">Screenshots</td><td class="px-5 py-3 text-slate-500">—</td><td class="px-5 py-3 text-emerald-400 font-medium">Tracked</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
-  <!-- LIVE TERMINAL -->
-  <section id="terminal" class="border-y border-white/[0.04] bg-ink-900 rep_900/40">
+  <!-- METHOD -->
+  <section id="method" class="border-y border-white/[0.04] bg-ink-900/30">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-      <div class="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <div>
-          <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Live terminal</p>
-          <h2 class="text-3xl font-extrabold tracking-tight">Active setups</h2>
-          <p class="text-sm text-slate-400 mt-1">Structure-scored · AI-gated · Updated from the engine</p>
-        </div>
-        <div class="flex gap-2" id="filters">
-          <button data-filter="ALL" class="filter-btn px-3.5 py-1.5 rounded-full bg-accent-500 text-white text-xs font-semibold">All</button>
-          <button data-filter="XAUUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">XAUUSD</button>
-          <button data-filter="BTCUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">BTCUSD</button>
-        </div>
+      <div class="text-center mb-10">
+        <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Method</p>
+        <h2 class="text-3xl font-extrabold tracking-tight">Four layers. No black box.</h2>
       </div>
-      <div id="signal-list" class="grid sm:grid-cols-2 gap-4">
-        <div class="glass rounded-2xl p-10 text-center text-slate-500 text-sm col-span-full">Loading terminal…</div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass rounded-2xl p-5 card-hover">
+          <div class="text-accent-400 text-xs font-bold mb-2">01 · Structure</div>
+          <h3 class="font-semibold mb-1">Price action engine</h3>
+          <p class="text-sm text-slate-400">BOS, CHoCH, liquidity sweeps, FVG, HTF alignment. Scores and rejects weak candidates.</p>
+        </div>
+        <div class="glass rounded-2xl p-5 card-hover">
+          <div class="text-accent-400 text-xs font-bold mb-2">02 · Levels</div>
+          <h3 class="font-semibold mb-1">Locked plan</h3>
+          <p class="text-sm text-slate-400">Entry zone hugs live price. Structure SL. TP1 / TP2 / TP3 with minimum RR. AI never moves numbers.</p>
+        </div>
+        <div class="glass rounded-2xl p-5 card-hover">
+          <div class="text-accent-400 text-xs font-bold mb-2">03 · Regime</div>
+          <h3 class="font-semibold mb-1">Context label</h3>
+          <p class="text-sm text-slate-400">Trend, volatility, compression. Know if the model fits the session before you size up.</p>
+        </div>
+        <div class="glass rounded-2xl p-5 card-hover">
+          <div class="text-accent-400 text-xs font-bold mb-2">04 · AI gate</div>
+          <h3 class="font-semibold mb-1">Gemini verify</h3>
+          <p class="text-sm text-slate-400">APPROVE / WATCH / REJECT + confidence. Strict mode: failures cannot become live signals.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- WORKFLOW -->
-  <section id="workflow" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-    <div class="text-center mb-10">
-      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Workflow</p>
-      <h2 class="text-3xl font-extrabold tracking-tight">Your edge in four steps</h2>
+  <!-- TERMINAL -->
+  <section id="terminal" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Live terminal</p>
+        <h2 class="text-3xl font-extrabold tracking-tight">Active setups</h2>
+        <p class="text-sm text-slate-400 mt-1">Click <span class="text-slate-300">Use in risk</span> to fill the calculator · Copy levels in one tap</p>
+      </div>
+      <div class="flex flex-wrap gap-2" id="filters">
+        <button data-filter="ALL" class="filter-btn px-3.5 py-1.5 rounded-full bg-accent-500 text-white text-xs font-semibold">All</button>
+        <button data-filter="XAUUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">XAUUSD</button>
+        <button data-filter="BTCUSD" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">BTCUSD</button>
+        <button data-filter="LIVE" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">Signals only</button>
+        <button data-filter="WATCH" class="filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600">Watchlist</button>
+      </div>
     </div>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass rounded-2xl p-5 relative">
-        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">1</span>
-        <p class="text-accent-400 text-xs font-semibold mb-2">Scan</p>
-        <h3 class="font-semibold mb-1">Structure engine runs</h3>
-        <p class="text-sm text-slate-400">BOS, CHoCH, sweeps, FVG, HTF bias. Only quality candidates survive scoring.</p>
-      </div>
-      <div class="glass rounded-2xl p-5 relative">
-        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">2</span>
-        <p class="text-accent-400 text-xs font-semibold mb-2">Gate</p>
-        <h3 class="font-semibold mb-1">Gemini reviews</h3>
-        <p class="text-sm text-slate-400">Regime + setup context. APPROVE only when the model agrees direction and quality.</p>
-      </div>
-      <div class="glass rounded-2xl p-5 relative">
-        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">3</span>
-        <p class="text-accent-400 text-xs font-semibold mb-2">Alert</p>
-        <h3 class="font-semibold mb-1">Telegram + terminal</h3>
-        <p class="text-sm text-slate-400">Full plan posted: zone, SL, TP1–3, RR, regime, AI confidence.</p>
-      </div>
-      <div class="glass rounded-2xl p-5 relative">
-        <span class="absolute top-4 right-4 text-3xl font-black text-white/5">4</span>
-        <p class="text-accent-400 text-xs font-semibold mb-2">Manage</p>
-        <h3 class="font-semibold mb-1">TP1 → BE → runners</h3>
-        <p class="text-sm text-slate-400">Lifecycle tracked. Results logged in R for the dashboard.</p>
-      </div>
+    <div id="signal-list" class="grid sm:grid-cols-2 gap-4">
+      <div class="glass rounded-2xl p-8 col-span-full"><div class="skeleton h-40 rounded-xl"></div></div>
+    </div>
+  </section>
+
+  <!-- HOW TO TRADE -->
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+    <div class="glass-strong rounded-2xl p-6 sm:p-8">
+      <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Playbook</p>
+      <h2 class="text-xl font-bold mb-5">How to use a setup</h2>
+      <ol class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-slate-400 list-decimal list-inside">
+        <li class="pl-1"><span class="text-slate-200 font-medium">Read direction + tier + AI.</span> Skip WATCH or REJECT if you only take approved.</li>
+        <li class="pl-1"><span class="text-slate-200 font-medium">Size from the risk calculator.</span> Use entry mid and SL. Default 0.5–1% risk.</li>
+        <li class="pl-1"><span class="text-slate-200 font-medium">Place the plan.</span> Limit in the zone, SL at structure, TP1 closest.</li>
+        <li class="pl-1"><span class="text-slate-200 font-medium">Manage.</span> After TP1, move SL to BE. Trail runners to TP2 / TP3 or exit on invalidation.</li>
+      </ol>
     </div>
   </section>
 
   <!-- RISK -->
-  <section id="risk" class="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
-    <div class="glass-strong rounded-2xl p-6 sm:p-8">
+  <section id="risk" class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <div class="glass rounded-2xl p-6 sm:p-8">
       <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-1">Position sizing</p>
@@ -290,13 +311,45 @@
   </section>
 
   <!-- RESULTS -->
-  <section id="results" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-    <div class="mb-8">
+  <section id="results" class="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+    <div class="mb-6">
       <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">Track record</p>
-      <h2 class="text-3xl font-extrabold tracking-tight">Recent results</h2>
+      <h2 class="text-2xl font-extrabold tracking-tight">Recent results</h2>
     </div>
     <div id="closed-list" class="space-y-2">
       <div class="glass rounded-xl px-4 py-3 text-slate-500 text-sm">No closed trades yet.</div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="border-t border-white/[0.04]">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+      <div class="text-center mb-10">
+        <p class="text-[11px] uppercase tracking-[0.2em] text-accent-400 font-semibold mb-2">FAQ</p>
+        <h2 class="text-3xl font-extrabold tracking-tight">Straight answers</h2>
+      </div>
+      <div class="space-y-3">
+        <details class="faq-item glass rounded-xl px-5 py-4 group">
+          <summary class="cursor-pointer font-medium text-sm list-none flex justify-between items-center">Is this investment advice?<span class="text-slate-500 group-open:rotate-45 transition text-lg leading-none">+</span></summary>
+          <p class="mt-3 text-sm text-slate-400 leading-relaxed">No. Apex Edge provides educational analysis and structured setups. You are solely responsible for every trade decision.</p>
+        </details>
+        <details class="faq-item glass rounded-xl px-5 py-4 group">
+          <summary class="cursor-pointer font-medium text-sm list-none flex justify-between items-center">Can the AI change entry or stop levels?<span class="text-slate-500 group-open:rotate-45 transition text-lg leading-none">+</span></summary>
+          <p class="mt-3 text-sm text-slate-400 leading-relaxed">No. Levels are calculated by the deterministic engine. Gemini only returns APPROVE, WATCH, or REJECT with reasons and confidence.</p>
+        </details>
+        <details class="faq-item glass rounded-xl px-5 py-4 group">
+          <summary class="cursor-pointer font-medium text-sm list-none flex justify-between items-center">What does TP1 → BE mean?<span class="text-slate-500 group-open:rotate-45 transition text-lg leading-none">+</span></summary>
+          <p class="mt-3 text-sm text-slate-400 leading-relaxed">Take profit 1 is the closest target. After it hits, stop-loss moves to breakeven (entry). Remaining size can run toward TP2 and TP3.</p>
+        </details>
+        <details class="faq-item glass rounded-xl px-5 py-4 group">
+          <summary class="cursor-pointer font-medium text-sm list-none flex justify-between items-center">Why are there few signals on gold?<span class="text-slate-500 group-open:rotate-45 transition text-lg leading-none">+</span></summary>
+          <p class="mt-3 text-sm text-slate-400 leading-relaxed">Gold runs in strict London/NY session windows with higher quality filters and daily caps. Fewer, higher-quality setups by design.</p>
+        </details>
+        <details class="faq-item glass rounded-xl px-5 py-4 group">
+          <summary class="cursor-pointer font-medium text-sm list-none flex justify-between items-center">Where do alerts go first?<span class="text-slate-500 group-open:rotate-45 transition text-lg leading-none">+</span></summary>
+          <p class="mt-3 text-sm text-slate-400 leading-relaxed">Telegram. The website reflects the same data after the engine writes signals.json. Join the channel for the fastest notice.</p>
+        </details>
+      </div>
     </div>
   </section>
 
@@ -304,15 +357,15 @@
   <section class="border-t border-white/[0.04]">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center">
       <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-3">Trade the plan, not the noise</h2>
-      <p class="text-slate-400 mb-8 max-w-lg mx-auto">Live setups on the terminal. Instant alerts on Telegram. Structure + AI — you execute.</p>
+      <p class="text-slate-400 mb-8 max-w-lg mx-auto">Live terminal on this page. Instant alerts on Telegram. Structure + AI gate — you execute.</p>
       <div class="flex flex-wrap justify-center gap-3">
         <a href="#terminal" class="px-5 py-2.5 rounded-full bg-white text-ink-950 font-semibold text-sm hover:bg-slate-100 transition">Open terminal</a>
         <a href="https://t.me/PriceActionSignalsHub" target="_blank" rel="noopener"
            class="px-5 py-2.5 rounded-full border border-white/15 text-sm text-slate-300 hover:text-white hover:border-white/30 transition">Join Telegram</a>
       </div>
       <p class="mt-10 text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
-        Educational information only. Not investment advice. Rule-based levels; AI verifies quality.
-        Past results do not guarantee future performance. Trade at your own risk.
+        Educational information only. Not investment advice. Rule-based levels; AI verifies quality only.
+        Past performance does not guarantee future results. Trade at your own risk.
       </p>
     </div>
   </section>
@@ -322,12 +375,22 @@
   <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
     <span>© 2026 Apex Edge</span>
     <span id="last-updated">—</span>
-    <a href="https://t.me/PriceActionSignalsHub" class="hover:text-slate-400 transition" target="_blank" rel="noopener">Telegram</a>
+    <div class="flex gap-4">
+      <a href="#faq" class="hover:text-slate-400 transition">FAQ</a>
+      <a href="https://t.me/PriceActionSignalsHub" class="hover:text-slate-400 transition" target="_blank" rel="noopener">Telegram</a>
+    </div>
   </div>
 </footer>
 
 <script>
 let allSignals = [], currentFilter = 'ALL';
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1800);
+}
 
 function pairColor(p) { return p === 'BTCUSD' ? 'text-btc-400' : 'text-gold-400'; }
 
@@ -353,20 +416,53 @@ function convictionBadge(s) {
   return '';
 }
 
-function card(s) {
+function midEntry(zone) {
+  if (!zone) return null;
+  const parts = String(zone).split('-').map(Number);
+  if (parts.length === 2 && parts.every(n => !isNaN(n))) return (parts[0] + parts[1]) / 2;
+  const n = Number(zone);
+  return isNaN(n) ? null : n;
+}
+
+function relativeTime(iso) {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return '';
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function levelsText(s) {
+  return [
+    (s.pair || '') + ' ' + (s.direction || ''),
+    'Entry: ' + (s.entry_zone || '—'),
+    'SL: ' + (s.stop_loss || '—'),
+    'TP1: ' + (s.tp1 || '—'),
+    'TP2: ' + (s.tp2 || '—'),
+    'TP3: ' + (s.tp3 || '—'),
+    s.invalidation ? 'Invalidation: ' + s.invalidation : ''
+  ].filter(Boolean).join('\n');
+}
+
+function card(s, idx) {
   const pair = s.pair || 'XAUUSD';
-  const reasons = (s.reasons || []).slice(0, 4).map(r =>
+  const reasons = (s.reasons || []).slice(0, 5).map(r =>
     `<span class="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.04] text-slate-400">${r}</span>`
   ).join('');
-  const meta = [s.model, s.regime, s.rr != null ? 'RR ' + s.rr : null].filter(Boolean).join(' · ');
+  const meta = [s.model, s.regime, s.volatility, s.rr != null ? 'RR ' + s.rr : null].filter(Boolean).join(' · ');
+  const when = relativeTime(s.postedAt);
 
   return `
-  <article class="glass rounded-2xl p-5 card-hover">
+  <article class="glass rounded-2xl p-5 card-hover" data-idx="${idx}">
     <div class="flex flex-wrap items-center gap-2 mb-2">
       <span class="font-bold ${pairColor(pair)}">${pair}</span>
       ${dirBadge(s.direction)}
       ${tierBadge(s.tier || 'A')}
       ${convictionBadge(s)}
+      ${when ? `<span class="text-[10px] text-slate-600 ml-auto">${when}</span>` : ''}
     </div>
     ${meta ? `<p class="text-[10px] text-slate-500 mb-3">${meta}</p>` : ''}
     <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
@@ -374,20 +470,43 @@ function card(s) {
       <div class="flex justify-between gap-2"><span class="text-slate-500">TP1</span><span class="text-emerald-300 tabular-nums">${s.tp1 || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">SL</span><span class="text-rose-300 tabular-nums">${s.stop_loss || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">TP2</span><span class="tabular-nums">${s.tp2 || '—'}</span></div>
-      <div class="flex justify-between gap-2"><span class="text-slate-500">Invalidation</span><span class="text-xs text-slate-400 truncate max-w-[130px]">${s.invalidation || '—'}</span></div>
+      <div class="flex justify-between gap-2"><span class="text-slate-500">Invalidation</span><span class="text-xs text-slate-400 truncate max-w-[130px]" title="${s.invalidation || ''}">${s.invalidation || '—'}</span></div>
       <div class="flex justify-between gap-2"><span class="text-slate-500">TP3</span><span class="tabular-nums">${s.tp3 || '—'}</span></div>
     </div>
     ${reasons ? `<div class="mt-3 flex flex-wrap gap-1.5">${reasons}</div>` : ''}
     ${s.ai_explanation ? `<p class="mt-3 text-xs text-slate-500 line-clamp-2 leading-relaxed">${s.ai_explanation}</p>` : ''}
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button type="button" data-action="copy" data-idx="${idx}"
+        class="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition">Copy levels</button>
+      <button type="button" data-action="risk" data-idx="${idx}"
+        class="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 transition">Use in risk</button>
+    </div>
   </article>`;
+}
+
+function filtered() {
+  return allSignals.filter(s => {
+    const tier = (s.tier || '').toUpperCase();
+    const isWatch = tier === 'WATCHLIST' || tier === 'WATCH';
+    if (currentFilter === 'LIVE') return !isWatch;
+    if (currentFilter === 'WATCH') return isWatch;
+    if (currentFilter === 'XAUUSD' || currentFilter === 'BTCUSD') return (s.pair || 'XAUUSD') === currentFilter;
+    return true;
+  });
 }
 
 function render() {
   const list = document.getElementById('signal-list');
-  const items = allSignals.filter(s => currentFilter === 'ALL' || (s.pair || 'XAUUSD') === currentFilter);
-  list.innerHTML = items.length
-    ? items.map(card).join('')
-    : '<div class="glass rounded-2xl p-10 text-center text-slate-500 text-sm col-span-full">No active setups. Alerts hit Telegram first when the engine posts.</div>';
+  const items = filtered();
+  if (!items.length) {
+    list.innerHTML = '<div class="glass rounded-2xl p-10 text-center text-slate-500 text-sm col-span-full">No setups in this filter. Alerts post to Telegram first.</div>';
+    return;
+  }
+  // map back to allSignals index for buttons
+  list.innerHTML = items.map(s => {
+    const idx = allSignals.indexOf(s);
+    return card(s, idx);
+  }).join('');
 }
 
 function updateHero(data) {
@@ -405,7 +524,7 @@ function updateHero(data) {
     const d = (s.direction || '').toUpperCase();
     const arrow = d === 'BUY' ? '↑' : '↓';
     const col = d === 'BUY' ? 'text-emerald-400' : 'text-rose-400';
-    const conf = s.ai_confidence != null ? s.ai_confidence + '%' : (s.score != null ? 'sc ' + s.score : '');
+    const conf = s.ai_confidence != null && s.ai_decision === 'APPROVE' ? s.ai_confidence + '%' : (s.score != null ? 'sc ' + s.score : '');
     return `<div class="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5">
       <span class="font-semibold ${color} text-sm">${pair}</span>
       <span class="${col} text-sm font-semibold">${arrow} ${d}${conf ? ' · ' + conf : ''}</span>
@@ -418,7 +537,7 @@ function updateHero(data) {
   const latest = sigs[0] || watch[0];
   const peek = document.getElementById('hero-peek');
   if (!latest) {
-    peek.innerHTML = '<div class="flex items-center gap-2 mb-2"><span class="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Latest setup</span></div><p class="text-sm text-slate-400">Waiting for signal data…</p>';
+    peek.innerHTML = '<p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Latest setup</p><p class="text-sm text-slate-400">Waiting for engine data…</p>';
     return;
   }
   const p = latest.pair || 'XAUUSD';
@@ -426,6 +545,7 @@ function updateHero(data) {
     <div class="flex items-center gap-2 mb-2">
       <span class="text-[10px] uppercase tracking-wider text-slate-500 font-medium">Latest setup</span>
       ${tierBadge(latest.tier)}
+      <span class="text-[10px] text-slate-600 ml-auto">${relativeTime(latest.postedAt)}</span>
     </div>
     <div class="flex items-center gap-2 mb-2">
       <span class="font-bold ${pairColor(p)}">${p}</span>
@@ -448,6 +568,26 @@ document.getElementById('filters').addEventListener('click', e => {
       : 'filter-btn px-3.5 py-1.5 rounded-full bg-ink-700 text-slate-300 text-xs hover:bg-ink-600';
   });
   render();
+});
+
+document.getElementById('signal-list').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const idx = +btn.dataset.idx;
+  const s = allSignals[idx];
+  if (!s) return;
+  if (btn.dataset.action === 'copy') {
+    navigator.clipboard.writeText(levelsText(s)).then(() => toast('Levels copied')).catch(() => toast('Copy failed'));
+  }
+  if (btn.dataset.action === 'risk') {
+    const mid = midEntry(s.entry_zone);
+    const sl = parseFloat(s.stop_loss);
+    if (mid != null) document.getElementById('rc-entry').value = mid.toFixed(2);
+    if (!isNaN(sl)) document.getElementById('rc-sl').value = sl;
+    calcRisk();
+    document.getElementById('risk').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Risk calculator filled');
+  }
 });
 
 function calcRisk() {
@@ -477,12 +617,14 @@ async function load() {
     document.getElementById('stat-wr').textContent = st.win_rate != null ? st.win_rate + '%' : '—';
     document.getElementById('stat-ar').textContent = st.avg_r != null ? st.avg_r : '—';
     if (data.lastUpdated) {
-      document.getElementById('last-updated').textContent = 'Updated ' + new Date(data.lastUpdated).toLocaleString();
+      const label = 'Updated ' + relativeTime(data.lastUpdated) + ' · ' + new Date(data.lastUpdated).toLocaleString();
+      document.getElementById('last-updated').textContent = label;
+      document.getElementById('status-updated').textContent = label;
     }
     updateHero(data);
     const closed = data.closed || [];
     document.getElementById('closed-list').innerHTML = closed.length
-      ? closed.slice(0, 10).map(c => {
+      ? closed.slice(0, 12).map(c => {
           const pos = (c.result_r || 0) > 0;
           return `<div class="glass rounded-xl px-4 py-3 flex flex-wrap justify-between items-center gap-2 text-sm">
             <span class="font-medium ${c.pair === 'BTCUSD' ? 'text-btc-400' : 'text-gold-400'}">${c.pair}</span>
@@ -495,11 +637,11 @@ async function load() {
     render();
   } catch (e) {
     document.getElementById('signal-list').innerHTML =
-      '<div class="glass rounded-2xl p-8 text-center text-rose-400/80 text-sm col-span-full">Could not load signals.</div>';
+      '<div class="glass rounded-2xl p-8 text-center text-rose-400/80 text-sm col-span-full">Could not load signals.json</div>';
   }
 }
 load();
-setInterval(load, 60000);
+setInterval(load, 45000);
 </script>
 </body>
 </html>
